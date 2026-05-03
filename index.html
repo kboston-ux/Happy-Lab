@@ -123,6 +123,18 @@
         #manualPillBtn { position: fixed; top: 25px; left: 25px; padding: 10px 15px; font-size: 20px; background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.9); border-radius: 12px; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.1); transition: all 0.3s var(--premium-ease); z-index: 100; }
         #manualPillBtn:hover { background: #fff; transform: translateY(-2px) scale(1.05); }
 
+        /* 👑 KEN JI'S SECRET TOGGLE BUTTON */
+        #kenjiToggleBtn {
+            position: fixed; bottom: 85px; right: 25px; 
+            padding: 12px 20px; font-size: 13px;
+            background: rgba(38, 71, 86, 0.95); color: #fff;
+            backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.4);
+            border-radius: 15px; cursor: pointer; font-family: 'Poppins', sans-serif; font-weight: 600;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.2); transition: all 0.3s var(--premium-ease); z-index: 100;
+            display: none; /* Hidden strictly by default */
+        }
+        #kenjiToggleBtn:hover { background: #1a2a3a; transform: translateY(-3px); box-shadow: 0 12px 30px rgba(0,0,0,0.3); }
+
         h1 { font-family: 'Playfair Display', serif; font-size: 4em; color: #1a2a3a; margin-top: 0px; margin-bottom: 50px; position: relative; z-index: 10; text-shadow: 0 4px 15px rgba(0,0,0,0.05); }
         
         .bouncing-product { position: fixed; top: 0; left: 0; z-index: 1; pointer-events: none; opacity: 0.15; object-fit: contain; will-change: transform; backface-visibility: hidden; }
@@ -340,6 +352,9 @@
 
     <div id="app-content">
         <button id="manualPillBtn" title="Make it Rain! 💊">💊</button>
+        
+        <button id="kenjiToggleBtn">👀 Switch to Viewer</button>
+        
         <button id="logoutBtn">🚪 Logout</button>
 
         <div id="online-widget">
@@ -445,11 +460,36 @@
                     myStatusRef.onDisconnect().remove().then(function() { myStatusRef.set({ online: true, role: isLead ? 'Lead' : 'Agent' }); });
                 });
 
-                if (isLead) { document.body.classList.remove('viewer-mode'); document.querySelectorAll('.editable-points').forEach(el => { el.setAttribute('contenteditable', 'true'); el.title = "Click to manually edit total points!🧪"; });
-                } else { document.body.classList.add('viewer-mode'); document.querySelectorAll('.editable-points').forEach(el => { el.setAttribute('contenteditable', 'false'); el.title = ""; }); }
+                if (isLead) { 
+                    document.body.classList.remove('viewer-mode'); 
+                    document.querySelectorAll('.editable-points').forEach(el => { el.setAttribute('contenteditable', 'true'); el.title = "Click to manually edit total points!🧪"; });
+                } else { 
+                    document.body.classList.add('viewer-mode'); 
+                    document.querySelectorAll('.editable-points').forEach(el => { el.setAttribute('contenteditable', 'false'); el.title = ""; }); 
+                }
+
+                // 👑 KEN JI'S SECRET GOD-MODE BUTTON ACTIVATION
+                if (userEmail === 'kboston@happyhead.com') {
+                    document.getElementById('kenjiToggleBtn').style.display = 'block';
+                }
 
                 loginScreen.style.opacity = '0'; setTimeout(() => { loginScreen.style.display = 'none'; appContent.style.display = 'block'; }, 500);
             } else { loginScreen.style.display = 'flex'; loginScreen.style.opacity = '1'; appContent.style.display = 'none'; }
+        });
+
+        // 👑 KEN JI'S TOGGLE LOGIC
+        let isKenjiViewer = false;
+        document.getElementById('kenjiToggleBtn').addEventListener('click', function() {
+            isKenjiViewer = !isKenjiViewer;
+            if(isKenjiViewer) {
+                document.body.classList.add('viewer-mode');
+                document.querySelectorAll('.editable-points').forEach(el => { el.setAttribute('contenteditable', 'false'); el.title = ""; });
+                this.innerText = "✏️ Switch to Editor";
+            } else {
+                document.body.classList.remove('viewer-mode');
+                document.querySelectorAll('.editable-points').forEach(el => { el.setAttribute('contenteditable', 'true'); el.title = "Click to manually edit total points!🧪"; });
+                this.innerText = "👀 Switch to Viewer";
+            }
         });
 
         loginBtn.addEventListener('click', () => { loginError.innerText = ''; auth.signInWithEmailAndPassword(document.getElementById('login-email').value, document.getElementById('login-password').value).catch(error => { loginError.innerText = "Error: " + error.message; }); });
