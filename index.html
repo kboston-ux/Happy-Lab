@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Happy Lab Premium Dashboard 🧪</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+
+    <style>
+        :root { 
+            --gold: #ffeb3b; 
+            --silver: #C0C0C0;
+            --bronze: #CD7F32;
+            --name-color: #2f4f5a;
+            
+            /* Gender Palettes */
+            --male-color: #264756; 
+            --male-glow: rgba(38, 71, 86, 0.6);
+            --male-glow-max: rgba(38, 71, 86, 0.9);
+            
+            /* Ultra-Bright Women's Palettes */
+            --female-color: #b5a2b5; 
+            --female-text-color: #8e738e; 
+            --female-glow: rgba(230, 210, 230, 0.85); 
+            --female-glow-max: rgba(240, 220, 240, 0.99); 
+            
+            --premium-ease: cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+        
+        html { scroll-behavior: smooth; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(47, 79, 90, 0.2); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(47, 79, 90, 0.4); }
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #eef2f3 0%, #8e9eab 100%);
+            background-attachment: fixed;
+            text-align: center;
+            padding: 0; 
+            margin: 0;
+            overflow-x: hidden;
+            position: relative; 
+            -webkit-font-smoothing: antialiased; 
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* 🔐 VIEWER MODE CSS - HIDES CONTROLS FOR REGULAR AGENTS */
+        .viewer-mode input[type=range] { display: none !important; }
+        .viewer-mode .editable-points { pointer-events: none !important; border-bottom: none !important; user-select: none !important; }
+        .viewer-mode .rec-name-input { pointer-events: none !important; border-bottom: none !important; }
+        .viewer-mode .rec-stats-input { pointer-events: none !important; }
+        .viewer-mode .hm-toggle-container { pointer-events: none !important; cursor: default !important; }
+        .viewer-mode #resetBtn { display: none !important; }
+        .viewer-mode .last-edited { display: none !important; } 
+
+        /* 🟢 LIVE ROSTER WIDGET */
+        #online-widget {
+            position: fixed; bottom: 25px; left: 25px; background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255,255,255,0.9); border-radius: 15px; padding: 12px 20px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1); z-index: 100; font-family: 'Poppins', sans-serif;
+            text-align: left; cursor: default; transition: all 0.4s var(--premium-ease);
+            max-height: 24px; overflow: hidden;
+        }
+        #online-widget:hover { max-height: 400px; background: rgba(255, 255, 255, 0.98); box-shadow: 0 15px 35px rgba(0,0,0,0.15); }
+        .online-header { font-weight: 700; color: var(--name-color); font-size: 14px; cursor: pointer; }
+        .online-list {
+            margin-top: 15px; border-top: 1px dashed rgba(47, 79, 90, 0.3); padding-top: 12px; 
+            font-size: 13px; color: #1a2a3a; font-weight: 600; display: flex; flex-direction: column; gap: 8px;
+        }
+        
+        /* 🟢 MANAGER ONLINE DOTS (REMAIN ON MANAGER AVATARS FOR EXCLUSIVE LEAD VISUAL) */
+        .online-dot {
+            position: absolute; bottom: 8px; right: 8px; width: 20px; height: 20px;
+            background-color: #23d160; border: 3px solid #fff; border-radius: 50%;
+            z-index: 40; box-shadow: 0 0 12px rgba(35, 209, 96, 0.8); display: none; 
+            animation: pulseGreen 2.5s infinite;
+        }
+        @keyframes pulseGreen {
+            0% { box-shadow: 0 0 0 0 rgba(35, 209, 96, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(35, 209, 96, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(35, 209, 96, 0); }
+        }
+
+        /* 🟢 PLAYER PROFILE ONLINE DOTS (Simple, Static Dot for Hybrid Players) */
+        .profile-online-dot {
+            position: absolute; bottom: 0; right: 0; width: 15px; height: 15px;
+            background-color: #23d160; border: 2px solid #fff; border-radius: 50%;
+            z-index: 40; display: none; 
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1); 
+        }
+
+        /* 🔐 LOGIN SCREEN CSS */
+        #login-screen {
+            position: fixed; inset: 0; background: linear-gradient(135deg, #eef2f3 0%, #8e9eab 100%);
+            display: flex; justify-content: center; align-items: center; z-index: 999999;
+            transition: opacity 0.5s var(--premium-ease);
+        }
+        .login-box {
+            background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+            padding: 40px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.9);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1); text-align: center; width: 320px;
+        }
+        .login-box h2 { font-family: 'Playfair Display', serif; color: var(--name-color); margin-top: 0; margin-bottom: 20px; font-size: 32px; }
+        .login-input { width: 100%; padding: 14px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 10px; font-family: 'Poppins', sans-serif; font-size: 14px; box-sizing: border-box; outline: none; transition: border-color 0.3s; }
+        .login-input:focus { border-color: var(--name-color); }
+        .login-btn { width: 100%; padding: 14px; background: var(--name-color); color: white; border: none; border-radius: 10px; font-family: 'Poppins', sans-serif; font-weight: 600; font-size: 15px; cursor: pointer; transition: background 0.3s, transform 0.2s; }
+        .login-btn:hover { background: #1a2a3a; transform: translateY(-2px); }
+        .error-msg { color: #d9534f; font-size: 12px; margin-bottom: 15px; min-height: 18px; display: block; font-weight: 600;}
+
+        /* Hides dashboard until logged in */
+        #app-content { display: none; padding: 120px 20px 80px 20px; } 
+
+        #logoutBtn { position: fixed; top: 25px; right: 25px; padding: 10px 20px; background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.9); border-radius: 12px; color: var(--name-color); font-family: 'Poppins', sans-serif; font-weight: 700; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.1); transition: all 0.3s var(--premium-ease); z-index: 100; }
+        #logoutBtn:hover { background: #fff; transform: translateY(-2px); }
+        
+        h1 { font-family: 'Playfair Display', serif; font-size: 4em; color: #1a2a3a; margin-top: 0px; margin-bottom: 50px; position: relative; z-index: 10; text-shadow: 0 4px 15px rgba(0,0,0,0.05); cursor: pointer; transition: transform 0.2s; }
+        h1:active { transform: scale(0.95); }
+        
+        .bouncing-product { position: fixed; top: 0; left: 0; z-index: 1; pointer-events: none; opacity: 0.15; object-fit: contain; will-change: transform; backface-visibility: hidden; }
+        #decor-dandruff { width: 220px; } #decor-dna { width: 180px; } #decor-llllt { width: 200px; } #decor-multiple { width: 300px; opacity: 0.2;} #decor-more-pills { width: 220px; opacity: 0.2;} #decor-grey { width: 180px; opacity: 0.2;} #decor-background-img { width: 250px; opacity: 0.15;}
+
+        /* LAB LEADERBOARD */
+        #leaderboard {
+            position: fixed; left: 20px; top: 100px; width: 220px;
+            background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+            border-radius: 20px; padding: 20px; border: 1px solid rgba(255,255,255,0.9); box-shadow: 0 15px 35px rgba(0,0,0,0.1), inset 0 0 0 1px rgba(255,255,255,0.5); z-index: 100; text-align: left;
+        }
+        #leaderboard h3 { font-family: 'Playfair Display', serif; margin: 0 0 10px 0; color: #1a2a3a; border-bottom: 2px solid #5499c7; padding-bottom: 5px; font-size: 16px; }
+        #leaderboard h4 { font-family: 'Playfair Display', serif; font-size: 13px; color: #1a2a3a; margin-top: 15px; margin-bottom: 8px;}
+        .rank-item { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 13px; font-weight: 600; color: var(--name-color); transition: transform 0.3s var(--premium-ease); }
+        .rank-item:hover { transform: translateX(5px); }
+        .rank-num { width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: #eee; font-size: 11px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .rank-1 .rank-num { background: var(--gold); } .rank-2 .rank-num { background: var(--silver); } .rank-3 .rank-num { background: var(--bronze); color: white; }
+        .point-total { color: #1a2a3a; font-weight: 700; opacity: 0.8;}
+        .rank-item img.rank-crown { width: 25px; margin-left: auto; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1)); }
+
+        /* RECOGNITION PANEL */
+        #recognition-panel {
+            position: fixed; right: 20px; top: 100px; width: 300px; 
+            background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+            border-radius: 20px; padding: 20px; border: 1px solid rgba(255,255,255,0.9); box-shadow: 0 15px 35px rgba(0,0,0,0.1), inset 0 0 0 1px rgba(255,255,255,0.5); z-index: 100; text-align: center; max-height: 90vh; overflow-y: auto; overflow-x: hidden;
+        }
+
+        .rec-card { background: rgba(255, 255, 255, 0.9); border-radius: 15px; margin-bottom: 15px; box-shadow: 0 8px 20px rgba(0,0,0,0.04); border: 1px solid rgba(255,255,255,1); transition: transform 0.3s var(--premium-ease); position: relative; overflow: hidden; }
+        .rec-card:hover { transform: translateY(-2px); }
+        .rec-content { position: relative; z-index: 10; padding: 15px; }
+        
+        .rec-bg-container { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+        .rec-bg-img { width: 100%; height: 100%; object-fit: cover; display: none; animation: fadeInBg 0.5s ease; }
+        .rec-bg-gradient { position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(255,255,255,0.65) 0%, rgba(255,255,255,0.95) 100%); z-index: 2; }
+        @keyframes fadeInBg { from { opacity: 0; } to { opacity: 1; } }
+
+        .rec-title { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 700; color: #1a2a3a; margin: 0 0 10px 0; }
+        
+        .rec-pic { width: 90px; height: 90px; border-radius: 50%; object-fit: cover; border: 3px solid var(--gold); background-color: #fff; margin-bottom: 10px; box-shadow: 0 6px 15px rgba(0,0,0,0.15); transition: all 0.3s var(--premium-ease); }
+        .rec-name-input { width: 100%; border: none; background: transparent; text-align: center; font-family: 'Poppins', sans-serif; font-weight: 700; font-size: 18px; color: var(--name-color); outline: none; border-bottom: 1px dashed rgba(47, 79, 90, 0.3); padding-bottom: 2px; margin-bottom: 8px; transition: border-color 0.3s; }
+        .rec-name-input:focus { border-bottom: 1px solid var(--name-color); }
+        .rec-name-input::placeholder { color: rgba(47, 79, 90, 0.4); font-weight: 400; }
+        
+        .rec-stats-input { width: 100%; border: none; background: transparent; text-align: center; font-family: 'Poppins', sans-serif; font-size: 12px; color: #444; outline: none; resize: none; min-height: 75px; line-height: 1.6; overflow: hidden; }
+        .rec-stats-input::placeholder { color: rgba(0, 0, 0, 0.3); }
+        
+        .hm-toggle-container { margin-top: 0px; margin-bottom: 15px; font-size: 13px; font-weight: 600; color: var(--name-color); cursor: pointer; display: inline-block; background: rgba(255,255,255,0.9); padding: 8px 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,1); box-shadow: 0 4px 10px rgba(0,0,0,0.05); transition: all 0.3s var(--premium-ease); }
+        .hm-toggle-container:hover { background: rgba(255,255,255,1); transform: translateY(-1px); box-shadow: 0 6px 15px rgba(0,0,0,0.08); }
+        .hm-toggle-container input { cursor: pointer; margin-right: 5px; accent-color: var(--name-color); }
+
+        /* MANAGERS VIP LOUNGE */
+        .manager-container { display: flex; justify-content: center; flex-wrap: wrap; gap: 45px; margin-bottom: 60px; position: relative; z-index: 20; }
+        .manager-wrapper { position: relative; cursor: pointer; display: inline-block; z-index: 30;}
+        .manager-pic { width: 110px; height: 110px; border-radius: 50%; object-fit: cover; border: 4px solid var(--gold); background-color: #fff; box-shadow: 0 12px 30px rgba(0,0,0,0.2); transition: transform 0.4s var(--premium-ease), box-shadow 0.4s var(--premium-ease); position: relative; z-index: 20; }
+        .manager-wrapper:hover .manager-pic { transform: scale(1.1) rotate(2deg); box-shadow: 0 15px 40px rgba(0,0,0,0.3); }
+
+        .emoji-fountain { position: absolute; top: 0px; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 35; }
+        .emoji-fountain span { position: absolute; left: 50%; bottom: 50%; font-size: 26px; opacity: 0; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3)); will-change: transform, opacity; }
+        .celebrate .emoji-fountain .e1 { animation: spamUp 1.2s infinite 0.0s linear; left: 10%; } .celebrate .emoji-fountain .e2 { animation: spamUp 1.5s infinite 0.3s linear; left: 70%; } .celebrate .emoji-fountain .e3 { animation: spamUp 1.3s infinite 0.6s linear; left: 30%; } .celebrate .emoji-fountain .e4 { animation: spamUp 1.6s infinite 0.2s linear; left: 85%; } .celebrate .emoji-fountain .e5 { animation: spamUp 1.4s infinite 0.8s linear; left: 50%; }
+        @keyframes spamUp { 0% { opacity: 0; transform: translateY(0) scale(0.5) rotate(-10deg); } 15% { opacity: 1; transform: translateY(-20px) scale(1.2) rotate(10deg); } 80% { opacity: 0.8; transform: translateY(-100px) scale(1) rotate(-5deg); } 100% { opacity: 0; transform: translateY(-140px) scale(0.8) rotate(5deg); } }
+
+        .profile-tooltip { position: absolute; bottom: 115%; left: 50%; transform: translateX(-50%) translateY(15px); background: rgba(26, 42, 58, 0.95); padding: 10px 16px; border-radius: 12px; white-space: nowrap; opacity: 0; visibility: hidden; pointer-events: none; transition: all 0.3s var(--premium-ease); box-shadow: 0 10px 25px rgba(0,0,0,0.3); z-index: 100; backdrop-filter: blur(5px); }
+        .profile-tooltip::after { content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border-width: 6px; border-style: solid; border-color: rgba(26, 42, 58, 0.95) transparent transparent transparent; }
+        
+        .manager-wrapper:hover .profile-tooltip, .profile-wrapper:hover .profile-tooltip,
+        .manager-wrapper.active .profile-tooltip, .profile-wrapper.active .profile-tooltip { opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0); }
+        
+        .tooltip-name { display: block; font-size: 16px; font-weight: 700; color: var(--gold); line-height: 1.2; }
+        .tooltip-role { display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 400; color: #fff; opacity: 0.9; margin-top: 2px;}
+        .tooltip-gif { width: 40px; vertical-align: middle; margin-left: 8px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5)); }
+
+        /* CENTERED GRID */
+        .bottle-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 35px; max-width: 1200px; margin: 0 auto; position: relative; z-index: 5; } 
+        
+        .team-member { 
+            display: flex; flex-direction: column; align-items: center; width: 210px; 
+            background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); 
+            border: 2px solid rgba(255, 255, 255, 0.9); border-radius: 30px; padding: 30px 20px; 
+            box-shadow: 0 10px 40px 0 rgba(31, 38, 135, 0.08); transition: transform 0.4s var(--premium-ease), box-shadow 0.4s var(--premium-ease); position: relative; gap: 20px; 
+        }
+        .team-member:hover { transform: translateY(-8px); box-shadow: 0 20px 50px 0 rgba(31, 38, 135, 0.15); }
+        .team-member.maxed { border-color: rgba(255, 235, 59, 0.8); box-shadow: 0 10px 40px 0 rgba(31, 38, 135, 0.08), 0 0 15px rgba(255, 235, 59, 0.4); }
+
+        .gender-male { --fill-color: var(--male-color); } .gender-female { --fill-color: var(--female-color); }
+        .team-member::after { content: ''; position: absolute; inset: -3px; border-radius: 32px; border: 3px solid var(--fill-color); pointer-events: none; z-index: 10; clip-path: inset(calc(100% - var(--finish-p, 0%)) 0 0 0); transition: clip-path 0.4s var(--premium-ease); }
+        .team-member.has-bonus::after { box-shadow: 0 0 12px var(--fill-color); }
+
+        .profile-wrapper { position: relative; cursor: pointer; display: inline-block; z-index: 30; } 
+        .crown { position: absolute; top: -20px; right: -18px; width: 45px; z-index: 30; opacity: 0; transform: rotate(25deg) scale(0.5); pointer-events: none; transition: all 0.6s var(--premium-ease); filter: drop-shadow(0 6px 10px rgba(0,0,0,0.4)); }
+        .show-crown { opacity: 1; transform: rotate(25deg) scale(1.1); }
+
+        .profile-pic { width: 80px; height: 80px; border-radius: 50%; overflow: hidden; background-color: #fff; border: 4px solid #dcdcdc; transition: all 0.4s var(--premium-ease); position: relative; z-index: 20; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .profile-pic img { width: 100%; height: 100%; object-fit: cover; }
+        
+        .gender-male .profile-pic.in-progress { border-color: var(--male-color); box-shadow: 0 0 20px var(--male-glow); transform: scale(1.05); } .gender-male .profile-pic.maxed-ring { border-color: var(--male-color); box-shadow: 0 0 30px var(--male-glow-max); transform: scale(1.1); }
+        .gender-female .profile-pic.in-progress { border-color: var(--female-color); box-shadow: 0 0 25px var(--female-glow); transform: scale(1.05); } .gender-female .profile-pic.maxed-ring { border-color: var(--female-color); box-shadow: 0 0 35px var(--female-glow-max); transform: scale(1.1); }
+
+        /* MULTIPLE POPUPS SCATTER FEATURE */
+        .popup-container { position: absolute; top: 50%; left: 50%; width: 0; height: 0; z-index: 45; pointer-events: none; opacity: 0; visibility: hidden; transition: all 0.4s var(--premium-ease); }
+        .profile-wrapper.active .popup-container, .manager-wrapper.active .popup-container { opacity: 1; visibility: visible; }
+        .popup-bubble { position: absolute; width: 122px; height: 122px; border-radius: 50%; border: 4px solid #fff; background-color: #fff; object-fit: cover; box-shadow: 0 10px 20px rgba(0,0,0,0.25); cursor: pointer; pointer-events: auto; transition: scale 0.3s var(--premium-ease), rotate 0.3s var(--premium-ease), box-shadow 0.3s; scale: 1; rotate: 0deg; animation: floatBubble 3.5s ease-in-out infinite alternate; }
+        .popup-bubble:hover { scale: 1.15; rotate: 2deg; box-shadow: 0 15px 30px rgba(0,0,0,0.35); z-index: 50; }
+        @keyframes floatBubble { 0% { transform: translateY(0px); } 100% { transform: translateY(-12px); } }
+
+        .popup-bubble:nth-child(1) { top: -120px; left: -140px; animation-delay: 0s; } .popup-bubble:nth-child(2) { top: 0px; left: -130px; animation-delay: -1s; } .popup-bubble:nth-child(3) { top: -110px; left: 30px; animation-delay: -2s; } .popup-bubble:nth-child(4) { top: 15px; left: 40px; animation-delay: -0.5s; } .popup-bubble:nth-child(5) { top: -60px; left: -200px; animation-delay: -1.5s; } .popup-bubble:nth-child(6) { top: -60px; left: 90px; animation-delay: -2.5s; } .popup-bubble:nth-child(7) { top: 70px; left: -180px; animation-delay: -0.8s; } .popup-bubble:nth-child(8) { top: 70px; left: 80px; animation-delay: -1.8s; }     
+
+        /* AUTOMATED BACKGROUND CSS */
+        .card-bg-reveal { position: absolute; inset: 0; opacity: 0; z-index: 1; transition: opacity 0.4s var(--premium-ease); pointer-events: none; border-radius: 30px; overflow: hidden; backface-visibility: hidden; }
+        .reveal-img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; }
+        .reveal-gradient { position: absolute; inset: 0; background: linear-gradient(to bottom, transparent 40%, rgba(255,255,255,0.95) 85%); z-index: 2; }
+        .profile-wrapper.active ~ .card-bg-reveal { opacity: 1; }
+
+        /* THE "HOLE-IN-THE-BOTTLE" STACKING MAGIC */
+        .bottle-visual { width: 160px; position: relative; z-index: 10; pointer-events: none; transition: opacity 0.5s ease; }
+        .profile-wrapper.active ~ .bottle-visual { opacity: 0; }
+        .bottle-visual img.bottle-img { width: 100%; height: auto; display: block; position: relative; z-index: 5; filter: drop-shadow(0px 15px 25px rgba(0,0,0,0.25)); }
+        
+        .liquid-wrapper { position: absolute; z-index: 2; bottom: 5%; height: 66.5%; left: 48%; width: 25.5%; border-radius: 0 0 10px 5px; overflow: hidden; border: 2px solid rgba(0,0,0,0.15); clip-path: polygon(0% 0%, 45% 0%, 100% 28%, 100% 100%, 0% 100%); }
+        .liquid-fill { position: absolute; bottom: 0; left: 0; width: 100%; height: 0%; background-size: 300% 100%; mix-blend-mode: multiply; transition: height 1.6s var(--premium-ease); animation: flow 6s linear infinite, wobble 5s ease-in-out infinite alternate; border-radius: 4px; will-change: height, background-position; }
+        .gender-male .liquid-fill { background: linear-gradient(90deg, rgba(38, 71, 86, 0.6) 0%, rgba(38, 71, 86, 0.95) 30%, rgba(70, 110, 130, 1) 50%, rgba(38, 71, 86, 0.95) 70%, rgba(38, 71, 86, 0.6) 100%); background-size: 300% 100%; }
+        .gender-female .liquid-fill { background: linear-gradient(90deg, rgba(200, 180, 200, 0.6) 0%, rgba(200, 180, 200, 0.95) 30%, rgba(230, 210, 230, 1) 50%, rgba(200, 180, 200, 0.95) 70%, rgba(200, 180, 200, 0.6) 100%); background-size: 300% 100%; }
+        
+        @keyframes flow { 0% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+        @keyframes wobble { 0% { border-top-left-radius: 20px; } 100% { border-top-right-radius: 20px; } }
+
+        .floating-avatars, .bottle-emojis { position: absolute; inset: 0; z-index: 15; pointer-events: none; }
+        .float-avatar { position: absolute; bottom: 35px; width: 35px; height: 35px; border-radius: 50%; border: 2px solid white; opacity: 0; object-fit: cover; will-change: transform, opacity; }
+        .bottle-emojis span { position: absolute; bottom: 35px; font-size: 24px; opacity: 0; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.4)); will-change: transform, opacity; }
+        
+        .maxed .float-avatar.fa-1 { animation: floatUp 3s infinite linear; left: 30%; } .maxed .float-avatar.fa-2 { animation: floatUp 3.5s infinite 0.5s linear; left: 60%; }
+        .gender-male.maxed .float-avatar { filter: drop-shadow(0 0 15px var(--male-glow-max)); } .gender-female.maxed .float-avatar { filter: drop-shadow(0 0 15px var(--female-glow-max)); }
+        .has-bonus .bottle-emojis .be1 { animation: floatUp 2.5s infinite linear; left: 20%; filter: drop-shadow(0 0 20px var(--gold)); } .has-bonus .bottle-emojis .be2 { animation: floatUp 2.8s infinite 0.3s linear; left: 50%; filter: drop-shadow(0 0 20px var(--gold)); } .has-bonus .bottle-emojis .be3 { animation: floatUp 3s infinite 0.6s linear; left: 80%; filter: drop-shadow(0 0 20px var(--gold)); }
+        
+        @keyframes floatUp { 0% { opacity: 0; transform: translateY(0) scale(0.5); } 15% { opacity: 1; } 100% { opacity: 0; transform: translateY(-280px) translateX(25px) scale(1.2); } }
+        .bonus-shake { animation: gentleShake 0.4s var(--premium-ease) !important; will-change: transform; }
+        @keyframes gentleShake { 0% { transform: translateY(-5px) translateX(0); } 25% { transform: translateY(-5px) translateX(1px); } 50% { transform: translateY(-5px) translateX(-1px); } 75% { transform: translateY(-5px) translateX(1px); } 100% { transform: translateY(-5px) translateX(0); } }
+
+        .wow-scroll-gif { width: 80px; height: auto; display: none; z-index: 50; filter: drop-shadow(0 10px 15px rgba(0,0,0,0.3)); }
+        .maxed .wow-scroll-gif { display: block; animation: popIn 0.5s var(--premium-ease); }
+        @keyframes popIn { 0% { transform: scale(0.5); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+        
+        .congrats-frogs { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 50; pointer-events: none; }
+        .congrats-frogs img { position: absolute; bottom: 50%; opacity: 0; filter: drop-shadow(0 5px 10px rgba(0,0,0,0.4)); will-change: transform, opacity; }
+        .congrats-what { width: 45px; } .congrats-exciting { width: 55px; }
+        .trigger-congrats .congrats-what { animation: congratPop 2.5s var(--premium-ease) forwards; left: 15%; } .trigger-congrats .congrats-exciting { animation: congratPop 2.5s var(--premium-ease) forwards; left: 65%; }
+        @keyframes congratPop { 0% { opacity: 0; transform: translateY(0) scale(0.5); } 15% { opacity: 1; transform: translateY(-15px) scale(1.2); } 85% { opacity: 0.9; transform: translateY(-160px) scale(1); } 100% { opacity: 0; transform: translateY(-190px) scale(0.8); } }
+
+        /* Ensure controls stay visible above the background overlay */
+        .controls { width: 100%; display: flex; flex-direction: column; gap: 12px; margin-top: 5px; position: relative; z-index: 20; }
+        .score-display { font-weight: 700; font-size: 15px; display: flex; align-items: center; justify-content: center; gap: 4px; letter-spacing: 0.5px;}
+        .gender-male .score-display { color: var(--male-color); } .gender-female .score-display { color: var(--female-text-color); } 
+        
+        .editable-points { cursor: text; border-bottom: 2px dashed rgba(47, 79, 90, 0.3); transition: 0.3s; padding: 2px 6px; display: inline-block; min-width: 30px; text-align: right; font-weight: 800; color: #1a2a3a; border-radius: 4px; }
+        .editable-points:hover { background: rgba(255, 255, 255, 0.6); border-bottom-color: rgba(47, 79, 90, 0.6); }
+        .editable-points:focus { outline: none; background: rgba(255, 255, 255, 0.9); border-bottom-style: solid; border-bottom-color: #5499c7; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .last-edited { font-size: 10px; color: #666; font-weight: 600; min-height: 15px; margin-top: -8px; opacity: 0.7; cursor: help; transition: opacity 0.3s;}
+        .last-edited:hover { opacity: 1; }
+
+        input[type=range] { width: 100%; cursor: pointer; height: 10px; border-radius: 10px; -webkit-appearance: none; -moz-appearance: none; appearance: none; background: #d1d5db; outline: none; box-shadow: inset 0 1px 3px rgba(0,0,0,0.1); }
+        .gender-female .main-slider { background: linear-gradient(to right, var(--female-color) var(--val, 0%), #d1d5db var(--val, 0%)); }
+        .gender-male .main-slider { background: linear-gradient(to right, var(--male-color) var(--val, 0%), #d1d5db var(--val, 0%)); }
+        input::-webkit-slider-thumb { -webkit-appearance: none; height: 20px; width: 20px; border-radius: 50%; background: #fff; border: 4px solid var(--female-color); box-shadow: 0 3px 6px rgba(0,0,0,0.2); transition: transform 0.2s var(--premium-ease); margin-top: -5px; }
+        .gender-male .main-slider::-webkit-slider-thumb { border-color: var(--male-color); }
+        input::-webkit-slider-thumb:hover { transform: scale(1.2); }
+        input::-moz-range-thumb { height: 14px; width: 14px; border-radius: 50%; background: #fff; border: 4px solid var(--female-color); box-shadow: 0 3px 6px rgba(0,0,0,0.2); transition: transform 0.2s var(--premium-ease); cursor: pointer; }
+        .gender-male .main-slider::-moz-range-thumb { border-color: var(--male-color); }
+        input::-moz-range-thumb:hover { transform: scale(1.2); }
+
+        .bonus-slider { display: block; margin-top: -2px; } 
+        .gender-male .bonus-slider { background: linear-gradient(to right, var(--male-color) var(--b-val, 0%), #d1d5db var(--b-val, 0%)); }
+        .gender-female .bonus-slider { background: linear-gradient(to right, var(--female-color) var(--b-val, 0%), #d1d5db var(--b-val, 0%)); }
+        .gender-male .bonus-slider::-webkit-slider-thumb { border-color: var(--male-color); }
+        .gender-female .bonus-slider::-webkit-slider-thumb { border-color: var(--female-color); }
+        .gender-male .bonus-slider::-moz-range-thumb { border-color: var(--male-color); }
+        .gender-female .bonus-slider::-moz-range-thumb { border-color: var(--female-color); }
+
+        /* GLOBAL RESET BUTTON */
+        #resetBtn { position: fixed; bottom: 25px; right: 25px; padding: 14px 24px; background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.9); border-radius: 15px; color: var(--name-color); font-family: 'Poppins', sans-serif; font-weight: 700; cursor: pointer; box-shadow: 0 8px 25px rgba(0,0,0,0.1); transition: all 0.3s var(--premium-ease); z-index: 100; letter-spacing: 0.5px; }
+        #resetBtn:hover { background: rgba(255, 255, 255, 1); transform: translateY(-3px); box-shadow: 0 12px 30px rgba(0,0,0,0.15); }
+
+        /* MASSIVE PILL RAIN UPGRADE */
+        #pillRainContainer { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 999999; overflow: hidden; display: none; }
+        .falling-pill { position: absolute; top: -150px; animation: fall linear forwards; will-change: transform, opacity; filter: drop-shadow(0 15px 25px rgba(0,0,0,0.4)); }
+        @keyframes fall { 0% { transform: translateY(0) rotate(0deg); opacity: 1; } 100% { transform: translateY(120vh) rotate(720deg); opacity: 1; } }
+    </style>
+</head>
+<body>
+
+    <div id="login-screen">
+        <div class="login-box">
+            <h2>Happy Lab 🧪</h2>
+            <span class="error-msg" id="login-error"></span>
+            <input type="email" id="login-email" class="login-input" placeholder="Email Address">
+            <input type="password" id="login-password" class="login-input" placeholder="Password">
+            <button id="login-btn" class="login-btn">Enter Lab</button>
+        </div>
+    </div>
+
+    <div id="app-content">
+        <button id="logoutBtn">🚪 Logout</button>
+
+        <div id="online-widget">
+            <div class="online-header" id="roster-count">🟢 0 in Lab</div>
+            <div class="online-list" id="roster-list"></div>
+        </div>
+        
+        <div id="pillRainContainer"></div>
+
+        <img src="Dandruff.png" class="bouncing-product" id="decor-dandruff">
+        <img src="DNA.png" class="bouncing-product" id="decor-dna">
+        <img src="LLLLT.png" class="bouncing-product" id="decor-llllt">
+        <img src="multiple%20products.png" class="bouncing-product" id="decor-multiple">
+        <img src="more%20pills.png" class="bouncing-product" id="decor-more-pills">
+        <img src="grey.png" class="bouncing-product" id="decor-grey">
+        <img src="Background.png" class="bouncing-product" id="decor-background-img">
+
+        <div id="leaderboard">
+            <h3>🧪 Lab Leaderboard</h3>
+            <h4>🥇 Finishers</h4>
+            <div id="rankList"><p style="font-size: 11px; opacity: 0.6;">Waiting for first finisher...🧪</p></div>
+            <h4>🏆 Total Points</h4>
+            <div id="pointList"><p style="font-size: 11px; opacity: 0.6;">Waiting for first point...🧪</p></div>
+        </div>
+
+        <div id="recognition-panel">
+            <div class="rec-card" id="perf-card">
+                <div class="rec-bg-container"><img src="" class="rec-bg-img" id="perf-bg" onerror="this.style.display='none'" onload="this.style.display='block'"><div class="rec-bg-gradient"></div></div>
+                <div class="rec-content">
+                    <h4 class="rec-title">🏆 Top Performer</h4>
+                    <img src="https://ui-avatars.com/api/?name=%3F&background=eee&color=999" class="rec-pic" id="perf-pic">
+                    <input type="text" class="rec-name-input" id="perf-name" placeholder="Agent Name">
+                    <textarea class="rec-stats-input" id="perf-stats" placeholder="Type stats here..."></textarea>
+                </div>
+            </div>
+
+            <div class="rec-card" id="behav-card" style="margin-bottom: 10px;">
+                <div class="rec-bg-container"><img src="" class="rec-bg-img" id="behav-bg" onerror="this.style.display='none'" onload="this.style.display='block'"><div class="rec-bg-gradient"></div></div>
+                <div class="rec-content">
+                    <h4 class="rec-title">🌟 Top Behavior</h4>
+                    <img src="https://ui-avatars.com/api/?name=%3F&background=eee&color=999" class="rec-pic" id="behav-pic">
+                    <input type="text" class="rec-name-input" id="behav-name" placeholder="Agent Name">
+                    <textarea class="rec-stats-input" id="behav-stats" placeholder="Type stats here..."></textarea>
+                </div>
+            </div>
+
+            <label class="hm-toggle-container"><input type="checkbox" id="hm-toggle">🏅 Honorable Mention</label>
+
+            <div class="rec-card" id="hm-card" style="display: none; margin-bottom: 0;">
+                <div class="rec-bg-container"><img src="" class="rec-bg-img" id="hm-bg" onerror="this.style.display='none'" onload="this.style.display='block'"><div class="rec-bg-gradient"></div></div>
+                <div class="rec-content">
+                    <h4 class="rec-title">🏅 Honorable Mention</h4>
+                    <img src="https://ui-avatars.com/api/?name=%3F&background=eee&color=999" class="rec-pic" id="hm-pic">
+                    <input type="text" class="rec-name-input" id="hm-name" placeholder="Agent Name">
+                    <textarea class="rec-stats-input" id="hm-stats" placeholder="Type stats here..."></textarea>
+                </div>
+            </div>
+        </div>
+
+        <div class="manager-container" id="managerGrid"></div>
+        <h1>Happy Lab 🧪</h1>
+        <div class="bottle-container" id="bottleGrid"></div>
+        <button id="resetBtn">🔄 Reset Board</button>
+    </div> <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBMLvQ9Lf2uk_90NRBtgjQ5RshIDa5wFTo",
+            authDomain: "happy-lab-live.firebaseapp.com",
+            databaseURL: "https://happy-lab-live-default-rtdb.firebaseio.com",
+            projectId: "happy-lab-live",
+            storageBucket: "happy-lab-live.firebasestorage.app",
+            messagingSenderId: "690787900536",
+            appId: "1:690787900536:web:8e4e634b6b618c781ae18d",
+            measurementId: "G-ZMR2GW3EGX"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database().ref('happyLabData'); 
+        const presenceRef = firebase.database().ref('presence');
+        const auth = firebase.auth(); 
+
+        // 🌟 EMAIL TO DISPLAY NAME MAPPER
+        const emailToNameMap = {
+            "harvey@happyhead.com": "Harvey",
+            "yrrone@happyhead.com": "Jouls",
+            "kboston@happyhead.com": "Ken Ji",
+            "glyza@happyhead.com": "Glyza",
+            "ronellyn@happyhead.com": "Rhem",
+            "angelica@happyhead.com": "Angel",
+            "shinneth@happyhead.com": "Shine",
+            "lance@happyhead.com": "Lance",
+            "lflores@happyhead.com": "Lord Jet",
+            "molalo@happyhead.com": "Maria",
+            "jovie@happyhead.com": "Jovie",
+            "harrish@happyhead.com": "Vill",
+            "marjun@happyhead.com": "MUSHII",
+            "margarrett@happyhead.com": "Margarett",
+            "luigie@happyhead.com": "Luigi",
+            "argel@happyhead.com": "Argel",
+            "adelene@happyhead.com": "Adelene"
+        };
+
+        const allowedLeads = [
+            "harvey@happyhead.com", 
+            "glyza@happyhead.com", 
+            "kboston@happyhead.com",
+            "yrrone@happyhead.com"
+        ];
+
+        const loginScreen = document.getElementById('login-screen');
+        const appContent = document.getElementById('app-content');
+        const loginBtn = document.getElementById('login-btn');
+        const loginError = document.getElementById('login-error');
+
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                let userEmail = user.email.toLowerCase();
+                let isLead = allowedLeads.includes(userEmail);
+                
+                // 🟢 PRESENCE SYSTEM ACTIVATION
+                let myName = emailToNameMap[userEmail] || userEmail.split('@')[0];
+                const myStatusRef = firebase.database().ref('presence/' + myName);
+                
+                firebase.database().ref('.info/connected').on('value', function(snapshot) {
+                    if (snapshot.val() == false) { return; }
+                    myStatusRef.onDisconnect().remove().then(function() {
+                        myStatusRef.set({ online: true, role: isLead ? 'Lead' : 'Agent' });
+                    });
+                });
+
+                // Permissions logic
+                if (isLead) {
+                    document.body.classList.remove('viewer-mode');
+                    document.querySelectorAll('.editable-points').forEach(el => {
+                        el.setAttribute('contenteditable', 'true');
+                        el.title = "Click to manually edit total points!🧪";
+                    });
+                } else {
+                    document.body.classList.add('viewer-mode');
+                    document.querySelectorAll('.editable-points').forEach(el => {
+                        el.setAttribute('contenteditable', 'false');
+                        el.title = ""; 
+                    });
+                }
+
+                loginScreen.style.opacity = '0';
+                setTimeout(() => { loginScreen.style.display = 'none'; appContent.style.display = 'block'; }, 500);
+            } else {
+                loginScreen.style.display = 'flex'; loginScreen.style.opacity = '1'; appContent.style.display = 'none';
+            }
+        });
+
+        loginBtn.addEventListener('click', () => {
+            loginError.innerText = ''; 
+            auth.signInWithEmailAndPassword(document.getElementById('login-email').value, document.getElementById('login-password').value)
+                .catch(error => { loginError.innerText = "Error: " + error.message; });
+        });
+        document.getElementById('login-password').addEventListener('keypress', function (e) { if (e.key === 'Enter') loginBtn.click(); });
+        document.getElementById('logoutBtn').addEventListener('click', () => { auth.signOut(); });
+
+        // 🟢 LISTEN TO PRESENCE CHANGES
+        presenceRef.on('value', snap => {
+            const activeUsers = snap.val() || {};
+            const onlineNames = Object.keys(activeUsers);
+            
+            // Update Roster Widget
+            const rosterCount = document.getElementById('roster-count');
+            const rosterList = document.getElementById('roster-list');
+            rosterCount.innerHTML = `🟢 ${onlineNames.length} in Lab`;
+            rosterList.innerHTML = onlineNames.map(name => {
+                let roleIcon = activeUsers[name].role === 'Lead' ? '⭐' : '🧪';
+                return `<div>${roleIcon} ${name}</div>`;
+            }).join('');
+            
+            // 🌟 1. UPDATE EXCLUSIVE MANAGER DOTS
+            document.querySelectorAll('.online-dot').forEach(dot => dot.style.display = 'none');
+            onlineNames.forEach(name => {
+                let safeName = name.replace(/\s/g, ''); 
+                let dot = document.getElementById('online-dot-' + safeName);
+                if(dot) dot.style.display = 'block';
+            });
+
+            // 🌟 2. UPDATE MAIN GRID PROFILE DOTS 
+            document.querySelectorAll('.profile-online-dot').forEach(dot => dot.style.display = 'none');
+            onlineNames.forEach(name => {
+                let safeName = name.replace(/\s/g, ''); 
+                let dot = document.getElementById('profile-online-dot-' + safeName);
+                if(dot) dot.style.display = 'block';
+            });
+        });
+
+        function getAvatarUrl(rawName) {
+            if (!rawName || rawName.trim() === "") return "https://ui-avatars.com/api/?name=%3F&background=eee&color=999";
+            let name = rawName.trim();
+            if (name === "Francesca" || name === "Jordan") return `${encodeURIComponent(name)}.png`;
+            return `${encodeURIComponent(name)}.jpg`;
+        }
+        function getBackgroundFor(name) {
+            if (['Rhem', 'Lance', 'Jouls'].includes(name)) return 'MDI background.jpg';
+            if (['Angel', 'Shine', 'Margarett', 'Margarret', 'Jovie'].includes(name)) return 'Concierge background.jpg';
+            
+            // I removed the "Sales background" rule here!
+            // Now Ken Ji and Vill will automatically use their personal background files!
+            
+            return `${encodeURIComponent(name.trim())}%20background.jpg`;
+        }
+
+        function getPopupsHTML(rawName) {
+            let name = rawName.trim();
+            let possiblePopups = [ `${name} popup.jpg`, `${name} popup1.jpg`, `${name} popup2.jpg`, `${name} popup3.jpg`, `${name} popup4.jpg` ];
+            if (['Harvey', 'Rhem', 'Jouls'].includes(name)) { possiblePopups.push('Trio popup.jpg', 'Trio popup1.jpg'); }
+            if (['Maria', 'Rhem', 'Shine', 'Angel', 'Adelene'].includes(name)) possiblePopups.push('Ladies popup.jpg');
+            if (['Glyza', 'Jouls', 'Harvey'].includes(name)) possiblePopups.push('Leads popup.jpg');
+            if (['Glyza', 'Rhem', 'Harvey'].includes(name)) possiblePopups.push('Batch1 popup.jpg');
+            return `<div class="popup-container">${possiblePopups.map(p => `<img src="${p}" class="popup-bubble" onerror="this.remove()">`).join('')}</div>`;
+        }
+
+        // 🌟 GLYZA RESTORED TO VIP LOUNGE
+        const managers = [
+            { name: "Rene", position: "Boss", gif: "rave.gif" },
+            { name: "Francesca", position: "Manager (Korek!)", gif: "queen.gif" },
+            { name: "Jordan", position: "Fun Police", gif: "police.gif" },
+            { name: "Glyza", position: "Office Mom", gif: "typingcat (1).gif" }
+        ];
+
+        let managersHTML = '';
+        managers.forEach(mgr => {
+            managersHTML += `
+                <div class="manager-wrapper" onclick="this.classList.toggle('active')">
+                    <div class="emoji-fountain"><span class="e1">💙</span><span class="e2">🎉</span><span class="e3">💙</span><span class="e4">🙌</span><span class="e5">💙</span></div>
+                    <img src="${getAvatarUrl(mgr.name)}" class="manager-pic" alt="${mgr.name}" onerror="this.src='https://ui-avatars.com/api/?name=${mgr.name}'">
+                    <div class="online-dot" id="online-dot-${mgr.name.replace(/\s/g, '')}"></div>
+                    <div class="profile-tooltip"><span class="tooltip-name">${mgr.name}</span><span class="tooltip-role">${mgr.position} <img src="${mgr.gif}" class="tooltip-gif"></span></div>
+                    ${getPopupsHTML(mgr.name)} 
+                </div>`;
+        });
+        document.getElementById('managerGrid').innerHTML = managersHTML;
+
+        const teamData = [
+            { name: "Rhem", position: "MDI", gender: "female" }, { name: "Harvey", position: "Lead/Daddy", gender: "male" }, { name: "Jouls", position: "MDI/Weekend Lead", gender: "male" },
+            { name: "Angel", position: "Concierge", gender: "female" }, { name: "Ken Ji", position: "Sales", gender: "male" }, { name: "Shine", position: "Concierge", gender: "female" },
+            { name: "Lance", position: "MDI/Social Media", gender: "male" }, { name: "Lord Jet", position: "Concierge/Social Media", gender: "male" }, { name: "Maria", position: "Hair Specialist", gender: "female" },
+            { name: "Raian", position: "Hair Specialist", gender: "male" }, { name: "Jovie", position: "Concierge/Social Media", gender: "female" }, { name: "Vill", position: "Sales", gender: "male" },
+            { name: "MUSHII", position: "Hair Specialist", gender: "male" }, { name: "Margarett", position: "Concierge", gender: "female" }, { name: "Luigi", position: "Hair Specialist", gender: "male" },
+            { name: "Argel", position: "Hair Specialist", gender: "male" }, { name: "Seph", position: "Hair Specialist", gender: "male" }, { name: "Adelene", position: "Hair Specialist", gender: "female" } 
+        ];
+
+        // 🌟 IDENTIFYING THE "HYBRIDS" TO ADD SIMPLE DOTS TO
+        const simpleDotMembers = ["Harvey", "Jouls", "Ken Ji"];
+
+        const grid = document.getElementById('bottleGrid');
+        let allBottlesHTML = '';
+        for(let i = 1; i <= teamData.length; i++) {
+            let member = teamData[i - 1]; let displayName = member.name; let avatarUrl = getAvatarUrl(displayName); let bgImgUrl = getBackgroundFor(displayName);
+            let profileDotHTML = simpleDotMembers.includes(displayName) ? `<div class="profile-online-dot" id="profile-online-dot-${displayName.replace(/\s/g, '')}"></div>` : '';
+
+            allBottlesHTML += `
+                <div class="team-member gender-${member.gender}" id="card${i}">
+                    <div class="profile-wrapper" onclick="this.classList.toggle('active')">
+                        <img src="crown.gif" class="crown" id="crown${i}">
+                        <div class="profile-pic" id="profile${i}">
+                            <img src="${avatarUrl}">
+                            ${profileDotHTML}
+                        </div>
+                        <div class="profile-tooltip"><span class="tooltip-name">${displayName}</span><span class="tooltip-role">${member.position}</span></div>
+                        ${getPopupsHTML(displayName)} 
+                    </div>
+                    <div class="card-bg-reveal"><img src="${bgImgUrl}" class="reveal-img" alt=""><div class="reveal-gradient"></div></div>
+                    <img src="frog-wow-scroll.gif" class="wow-scroll-gif" id="wowScroll${i}">
+                    <div class="bottle-visual" id="bottle${i}">
+                        <div class="liquid-wrapper"><div class="liquid-fill" id="liquid${i}"></div></div>
+                        <img src="bottle.png" class="bottle-img">
+                        <div class="floating-avatars"><img src="${avatarUrl}" class="float-avatar fa-1"><img src="${avatarUrl}" class="float-avatar fa-2"></div>
+                        <div class="bottle-emojis"><span class="be1">🔥</span><span class="be2">⚡</span><span class="be3">⭐</span></div>
+                        <div class="congrats-frogs"><img src="frog-wow-what.gif" class="congrats-what"><img src="frog-wow-exciting.gif" class="congrats-exciting"></div>
+                    </div>
+                    <div class="controls">
+                        <div class="score-display">${displayName}: <span class="point-total-group"><span class="editable-points" id="score-num${i}">0</span> / 100</span></div>
+                        <input type="range" min="0" max="100" value="0" class="main-slider" id="mainSlider${i}">
+                        <input type="range" min="0" max="100" value="0" class="bonus-slider" id="bonusSlider${i}">
+                        <div class="last-edited" id="lastEdited${i}"></div>
+                    </div>
+                </div>`;
+        }
+        grid.innerHTML = allBottlesHTML;
+
+        function initBouncingProducts() {
+            const products = document.querySelectorAll('.bouncing-product'); const physicsData = [];
+            products.forEach(prod => { physicsData.push({ el: prod, x: Math.random() * (window.innerWidth - 300), y: Math.random() * (window.innerHeight - 300), vx: (Math.random() - 0.5) * 1.5, vy: (Math.random() - 0.5) * 1.5, rotation: Math.random() * 360, vr: (Math.random() - 0.5) * 0.5 }); });
+            function animateBounce() {
+                physicsData.forEach(data => {
+                    const width = data.el.getBoundingClientRect().width || 200; const height = data.el.getBoundingClientRect().height || 200;
+                    data.x += data.vx; data.y += data.vy; data.rotation += data.vr;
+                    if (data.x <= 0) { data.x = 0; data.vx *= -1; } else if (data.x + width >= window.innerWidth) { data.x = window.innerWidth - width; data.vx *= -1; }
+                    if (data.y <= 0) { data.y = 0; data.vy *= -1; } else if (data.y + height >= window.innerHeight) { data.y = window.innerHeight - height; data.vy *= -1; }
+                    data.el.style.transform = `translate3d(${data.x}px, ${data.y}px, 0) rotate(${data.rotation}deg)`;
+                });
+                requestAnimationFrame(animateBounce);
+            }
+            animateBounce();
+        }
+        setTimeout(initBouncingProducts, 500);
+
+        function triggerPillRain() {
+            const container = document.getElementById('pillRainContainer'); container.style.display = 'block'; container.innerHTML = ''; 
+            for(let k = 0; k < 120; k++) {
+                let pill = document.createElement('img'); pill.src = 'pills.png'; pill.className = 'falling-pill';
+                pill.style.left = Math.random() * 100 + 'vw'; pill.style.animationDuration = (Math.random() * 4 + 4) + 's'; pill.style.animationDelay = (Math.random() * 3) + 's'; 
+                pill.style.width = (Math.random() * 40 + 50) + 'px'; pill.style.transform = `rotate(${Math.random() * 360}deg)`;
+                container.appendChild(pill);
+            }
+            setTimeout(() => { container.style.display = 'none'; container.innerHTML = ''; }, 12000); 
+        }
+        document.querySelector('h1').addEventListener('click', triggerPillRain);
+
+        let finishedList = []; let agentPointData = []; 
+        db.child('winners').on('value', snap => { finishedList = snap.val() || []; updateLeaderboardHTML(); });
+        db.child('agents').on('value', snap => {
+            const allAgentsData = snap.val() || {}; agentPointData = []; 
+            teamData.forEach(agent => { if(allAgentsData[agent.name]) { agentPointData.push({ name: agent.name, total: (parseInt(allAgentsData[agent.name].main) || 0) + (parseInt(allAgentsData[agent.name].bonus) || 0) }); } });
+            agentPointData.sort((a, b) => b.total - a.total); updateCombinedLeaderboard(); 
+        });
+
+        function updateLeaderboardHTML() {
+            const list = document.getElementById('rankList');
+            if (finishedList.length === 0) { list.innerHTML = '<p style="font-size: 11px; opacity: 0.6;">Waiting for first finisher...🧪</p>'; return; }
+            list.innerHTML = finishedList.map((name, index) => `<div class="rank-item rank-${index+1}"><div class="rank-num">${index+1}</div> <span>${name} ${index === 0 ? '<img src="crown.gif" class="rank-crown">' : index === 1 ? "🥈" : index === 2 ? "🥉" : ""}</span></div>`).join('');
+            document.querySelectorAll('.crown').forEach(c => c.classList.remove('show-crown'));
+            if (finishedList.length > 0) { let firstPlaceIndex = teamData.findIndex(m => m.name === finishedList[0]) + 1; if(firstPlaceIndex > 0) document.getElementById('crown' + firstPlaceIndex).classList.add('show-crown'); document.getElementById('managerGrid').classList.add('celebrate'); } else { document.getElementById('managerGrid').classList.remove('celebrate'); }
+        }
+
+        function updateCombinedLeaderboard() { pointList = document.getElementById('pointList'); if (agentPointData.length === 0) { pointList.innerHTML = '<p style="font-size: 11px; opacity: 0.6;">Waiting for first point...🧪</p>'; return; } let currentRank = 1; for (let i = 0; i < agentPointData.length; i++) { if (i > 0 && agentPointData[i].total < agentPointData[i - 1].total) currentRank++; agentPointData[i].rank = currentRank; } pointList.innerHTML = agentPointData.map((agent) => `<div class="rank-item rank-${agent.rank}"><div class="rank-num">${agent.rank}</div> <span>${agent.name} <span class="point-total">${agent.total} pts</span> ${agent.rank === 1 && agent.total > 0 ? "🥇" : agent.rank === 2 && agent.total > 0 ? "🥈" : agent.rank === 3 && agent.total > 0 ? "🥉" : ""}</span></div>`).join(''); }
+        function getAuditData() { let email = auth.currentUser ? auth.currentUser.email : "unknown"; return { shortName: email.split('@')[0], timeString: new Date().toLocaleString('en-US') }; }
+        for(let i = 1; i <= teamData.length; i++) {
+            let mS = document.getElementById('mainSlider' + i), bS = document.getElementById('bonusSlider' + i), liq = document.getElementById('liquid' + i), scrNum = document.getElementById('score-num' + i), prf = document.getElementById('profile' + i), crd = document.getElementById('card' + i);
+            let shakeTimer; let memberName = teamData[i - 1].name;
+            function updateVisuals(isSync = false) {
+                let mV = parseInt(mS.value) || 0, bV = parseInt(bS.value) || 0;
+                liq.style.height = mV + '%'; scrNum.innerText = (mV + bV); mS.style.setProperty('--val', mV + '%'); bS.style.setProperty('--b-val', bV + '%');
+                if(mV === 100) { prf.className = 'profile-pic maxed-ring'; crd.classList.add('maxed'); if (!finishedList.includes(memberName)) { db.child('winners').set([...finishedList, memberName]); if(!isSync) { triggerPillRain(); for(let j = 1; j <= teamData.length; j++) { if (i !== j) { const cc = document.getElementById('card' + j); cc.classList.add('trigger-congrats'); setTimeout(() => cc.classList.remove('trigger-congrats'), 2500); } } } } } else { if(mV > 0) prf.className = 'profile-pic in-progress'; else prf.className = 'profile-pic'; crd.classList.remove('maxed'); if (finishedList.includes(memberName)) db.child('winners').set(finishedList.filter(n => n !== memberName)); }
+                if(bV > 0 && mV === 100) { crd.classList.add('has-bonus'); crd.style.setProperty('--finish-p', bV + '%'); } else { crd.classList.remove('has-bonus'); crd.style.setProperty('--finish-p', '0%'); }
+            }
+            mS.addEventListener('input', () => { updateVisuals(false); let a = getAuditData(); db.child('agents/' + memberName).update({ main: mS.value, lastEditedBy: a.shortName, lastEditedAt: a.timeString }); });
+            bS.addEventListener('input', () => { updateVisuals(false); let a = getAuditData(); db.child('agents/' + memberName).update({ bonus: bS.value, lastEditedBy: a.shortName, lastEditedAt: a.timeString }); crd.classList.add('bonus-shake'); clearTimeout(shakeTimer); shakeTimer = setTimeout(() => crd.classList.remove('bonus-shake'), 400); });
+            db.child('agents/' + memberName).on('value', snap => { const data = snap.val(); if (!data) return; if (document.activeElement !== mS) mS.value = data.main || 0; if (document.activeElement !== bS) bS.value = data.bonus || 0; if (document.activeElement !== scrNum) updateVisuals(true); const el = document.getElementById('lastEdited' + i); if(data.lastEditedBy) { el.innerText = `Updated by ${data.lastEditedBy}`; el.title = data.lastEditedAt; } });
+            function updateManualPoints(e) { if (e.type === 'keypress' && e.key !== 'Enter') return; e.preventDefault(); scrNum.blur(); let nP = parseInt(scrNum.innerText) || 0; if(isNaN(nP)) { alert("Oops! The Lab only accepts whole numbers! 🧪"); return; } nP = Math.max(0, Math.min(200, nP)); mS.value = Math.min(100, nP); bS.value = Math.max(0, nP - 100); updateVisuals(false); if(bS.value > 0) { crd.classList.add('bonus-shake'); clearTimeout(shakeTimer); shakeTimer = setTimeout(() => crd.classList.remove('bonus-shake'), 400); } let a = getAuditData(); db.child('agents/' + memberName).update({ main: mS.value, bonus: bS.value, lastEditedBy: a.shortName, lastEditedAt: a.timeString }); }
+            scrNum.addEventListener('blur', updateManualPoints); scrNum.addEventListener('keypress', updateManualPoints);
+        }
+        function syncRecognition(inputId, picId, dbKey, bgId) { const inputEl = document.getElementById(inputId), picEl = picId ? document.getElementById(picId) : null, bgEl = bgId ? document.getElementById(bgId) : null; function updateBg(name) { if(bgEl) { if (name && name.trim() !== '') { bgEl.src = `${encodeURIComponent(name.trim())}%20highlight%20background.jpg`; } else { bgEl.style.display = 'none'; bgEl.src = ''; } } } inputEl.addEventListener('input', (e) => { let val = e.target.value; if(picEl) picEl.src = getAvatarUrl(val); db.child('recognition/' + dbKey).set(val); updateBg(val); }); db.child('recognition/' + dbKey).on('value', snap => { const val = snap.val() || ''; if (document.activeElement !== inputEl) { inputEl.value = val; if(picEl) picEl.src = getAvatarUrl(val); } updateBg(val); }); }
+        syncRecognition('perf-name', 'perf-pic', 'perfName', 'perf-bg'); syncRecognition('perf-stats', null, 'perfStats', null); syncRecognition('behav-name', 'behav-pic', 'behavName', 'behav-bg'); syncRecognition('behav-stats', null, 'behavStats', null); syncRecognition('hm-name', 'hm-pic', 'hmName', 'hm-bg'); syncRecognition('hm-stats', null, 'hmStats', null);
+        const hmToggle = document.getElementById('hm-toggle'), hmCard = document.getElementById('hm-card'); hmToggle.addEventListener('change', (e) => { hmCard.style.display = e.target.checked ? 'block' : 'none'; db.child('recognition/hmToggleState').set(e.target.checked); }); db.child('recognition/hmToggleState').on('value', snap => { const isChecked = snap.val() || false; hmToggle.checked = isChecked; hmCard.style.display = isChecked ? 'block' : 'none'; });
+        document.getElementById('resetBtn').addEventListener('click', () => { if(confirm('Are you sure you want to reset ALL progress for the entire dashboard? This cannot be undone! 🧪')) { if(confirm('Wait, are you REALLY sure? The Fun Police (Jordan) is watching! 🚨👮‍♂️')) { if(confirm('Final warning! Are you really, really, REALLY, reaaaaally sure the Happy Lab is ready to be completely wiped and reset to zero? This includes everything! 💥🗑️')) { db.remove().then(() => location.reload()); } } } });
+    </script>
+</body>
+</html>
