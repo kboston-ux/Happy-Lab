@@ -58,6 +58,7 @@
         .viewer-mode .hm-toggle-container { pointer-events: none !important; cursor: default !important; }
         .viewer-mode #resetBtn { display: none !important; }
         .viewer-mode .last-edited { display: none !important; } 
+        .viewer-mode #manualPillBtn { display: none !important; } 
 
         /* 🟢 LIVE ROSTER WIDGET */
         #online-widget {
@@ -118,8 +119,11 @@
         #logoutBtn { position: fixed; top: 25px; right: 25px; padding: 10px 20px; background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.9); border-radius: 12px; color: var(--name-color); font-family: 'Poppins', sans-serif; font-weight: 700; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.1); transition: all 0.3s var(--premium-ease); z-index: 100; }
         #logoutBtn:hover { background: #fff; transform: translateY(-2px); }
         
-        h1 { font-family: 'Playfair Display', serif; font-size: 4em; color: #1a2a3a; margin-top: 0px; margin-bottom: 50px; position: relative; z-index: 10; text-shadow: 0 4px 15px rgba(0,0,0,0.05); cursor: pointer; transition: transform 0.2s; }
-        h1:active { transform: scale(0.95); }
+        /* VIP Manual Pill Button */
+        #manualPillBtn { position: fixed; top: 25px; left: 25px; padding: 10px 15px; font-size: 20px; background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.9); border-radius: 12px; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.1); transition: all 0.3s var(--premium-ease); z-index: 100; }
+        #manualPillBtn:hover { background: #fff; transform: translateY(-2px) scale(1.05); }
+
+        h1 { font-family: 'Playfair Display', serif; font-size: 4em; color: #1a2a3a; margin-top: 0px; margin-bottom: 50px; position: relative; z-index: 10; text-shadow: 0 4px 15px rgba(0,0,0,0.05); }
         
         .bouncing-product { position: fixed; top: 0; left: 0; z-index: 1; pointer-events: none; opacity: 0.15; object-fit: contain; will-change: transform; backface-visibility: hidden; }
         #decor-dandruff { width: 220px; } #decor-dna { width: 180px; } #decor-llllt { width: 200px; } #decor-multiple { width: 300px; opacity: 0.2;} #decor-more-pills { width: 220px; opacity: 0.2;} #decor-grey { width: 180px; opacity: 0.2;} #decor-background-img { width: 250px; opacity: 0.15;}
@@ -335,6 +339,7 @@
     </div>
 
     <div id="app-content">
+        <button id="manualPillBtn" title="Make it Rain! 💊">💊</button>
         <button id="logoutBtn">🚪 Logout</button>
 
         <div id="online-widget">
@@ -659,7 +664,9 @@
             }
             setTimeout(() => { container.style.display = 'none'; container.innerHTML = ''; }, 12000); 
         }
-        document.querySelector('h1').addEventListener('click', triggerPillRain);
+        
+        // ✨ NEW BUTTON TRIGGER INSTEAD OF THE H1 TITLE
+        document.getElementById('manualPillBtn').addEventListener('click', triggerPillRain);
 
         let finishedList = []; let agentPointData = []; 
         db.child('winners').on('value', snap => { finishedList = snap.val() || []; updateLeaderboardHTML(); });
