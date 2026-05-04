@@ -3,13 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Happy Lab Dashboard</title>
+    <title>Happy Lab Premium Dashboard</title>
+    
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧪</text></svg>">
+    
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=Poppins:wght@400;600&display=swap" rel="stylesheet">
     
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+    
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 
     <style>
         :root { 
@@ -117,9 +121,19 @@
         /* Hides dashboard until logged in */
         #app-content { display: none; padding: 120px 20px 80px 20px; } 
 
-        #logoutBtn { position: fixed; top: 25px; right: 25px; padding: 10px 20px; background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.9); border-radius: 12px; color: var(--name-color); font-family: 'Poppins', sans-serif; font-weight: 700; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.1); transition: all 0.3s var(--premium-ease); z-index: 100; }
-        #logoutBtn:hover { background: #fff; transform: translateY(-2px); }
+        /* 👑 TOP RIGHT CONTROLS (My Stats, Edit Roster, Logout) */
+        .top-right-controls { position: fixed; top: 25px; right: 25px; display: flex; gap: 10px; z-index: 100;}
+        .top-right-controls button { padding: 10px 15px; background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.9); border-radius: 12px; color: var(--name-color); font-family: 'Poppins', sans-serif; font-weight: 700; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.1); transition: all 0.3s var(--premium-ease); }
+        .top-right-controls button:hover { background: #fff; transform: translateY(-2px); }
         
+        /* POPUP MODALS CSS (For VIP Roster & My Stats) */
+        .custom-modal { display: none; position: fixed; inset: 0; background: rgba(26, 42, 58, 0.8); backdrop-filter: blur(8px); z-index: 999999; justify-content: center; align-items: center; opacity: 0; transition: opacity 0.3s; }
+        .custom-modal.show { display: flex; opacity: 1; }
+        .modal-content { background: rgba(255, 255, 255, 0.95); padding: 30px; border-radius: 20px; width: 320px; text-align: center; position: relative; box-shadow: 0 20px 50px rgba(0,0,0,0.3); border: 1px solid white; transform: translateY(20px); transition: transform 0.3s var(--premium-ease);}
+        .custom-modal.show .modal-content { transform: translateY(0); }
+        .close-modal { position: absolute; top: 15px; right: 20px; font-size: 24px; cursor: pointer; color: #999; transition: color 0.2s; font-weight: bold;}
+        .close-modal:hover { color: #d9534f; }
+
         /* VIP Manual Pill Button */
         #manualPillBtn { position: fixed; top: 25px; left: 25px; padding: 10px 15px; font-size: 20px; background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.9); border-radius: 12px; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.1); transition: all 0.3s var(--premium-ease); z-index: 100; }
         #manualPillBtn:hover { background: #fff; transform: translateY(-2px) scale(1.05); }
@@ -132,7 +146,7 @@
             backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.4);
             border-radius: 15px; cursor: pointer; font-family: 'Poppins', sans-serif; font-weight: 600;
             box-shadow: 0 8px 25px rgba(0,0,0,0.2); transition: all 0.3s var(--premium-ease); z-index: 100;
-            display: none; /* Hidden strictly by default */
+            display: none; 
         }
         #kenjiToggleBtn:hover { background: #1a2a3a; transform: translateY(-3px); box-shadow: 0 12px 30px rgba(0,0,0,0.3); }
 
@@ -354,9 +368,13 @@
     <div id="app-content">
         <button id="manualPillBtn" title="Make it Rain! 💊">💊</button>
         
+        <div class="top-right-controls">
+            <button id="editRosterBtn" style="display:none;">⚙️ Edit Roster</button>
+            <button id="myStatsBtn">📊 My Progress</button>
+            <button id="logoutBtn">🚪 Logout</button>
+        </div>
+
         <button id="kenjiToggleBtn">👀 Switch to Viewer</button>
-        
-        <button id="logoutBtn">🚪 Logout</button>
 
         <div id="online-widget">
             <div class="online-header" id="roster-count">🟢 0 in Lab</div>
@@ -419,7 +437,42 @@
         <h1>Happy Lab 🧪</h1>
         <div class="bottle-container" id="bottleGrid"></div>
         <button id="resetBtn">🔄 Reset Board</button>
-    </div> <script>
+    </div> <div id="roster-modal" class="custom-modal">
+        <div class="modal-content">
+            <span class="close-modal" id="closeRoster">&times;</span>
+            <h2 style="font-family: 'Playfair Display', serif; color: var(--name-color); margin-top:0;">⚙️ VIP Roster Request</h2>
+            <p style="font-size: 12px; color: #666; margin-bottom: 20px;">Requests are sent directly to Ken Ji for approval and visual processing. Changes reflect within 24 hours.</p>
+            <select id="rosterAction" class="login-input" style="cursor: pointer; text-align:center;">
+                <option value="Add New Agent">➕ Add New Agent</option>
+                <option value="Edit Agent Role">✏️ Edit Agent Role</option>
+                <option value="Remove Agent">🗑️ Remove Agent</option>
+            </select>
+            <input type="text" id="rosterAgentName" class="login-input" placeholder="Agent Name (e.g. Sarah)">
+            <input type="text" id="rosterAgentRole" class="login-input" placeholder="Role (e.g. Concierge)">
+            <button id="submitRosterBtn" class="login-btn">Send Request 📩</button>
+            <div id="rosterStatus" style="display:none; margin-top:15px; font-weight:bold; color:#23d160; font-size:13px;">✅ Request sent to Ken Ji!</div>
+        </div>
+    </div>
+
+    <div id="stats-modal" class="custom-modal">
+        <div class="modal-content">
+            <span class="close-modal" id="closeStats">&times;</span>
+            <h2 id="statsTitle" style="font-family: 'Playfair Display', serif; color: var(--name-color); margin-top:0;">My Progress 📊</h2>
+            <img id="statsPic" src="" style="width:100px; height:100px; border-radius:50%; border:4px solid var(--gold); margin: 10px 0; object-fit:cover; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+            <h3 id="statsName" style="color:var(--name-color); margin: 5px 0;">Agent Name</h3>
+            <div style="background:#f4f4f4; border-radius:10px; padding:15px; margin-top:15px; text-align:left; color:#1a2a3a;">
+                <p style="margin:5px 0;"><strong>🧪 Main Points:</strong> <span id="statsMain" style="float:right;">0</span></p>
+                <p style="margin:5px 0;"><strong>⭐ Bonus Points:</strong> <span id="statsBonus" style="float:right;">0</span></p>
+                <hr style="border:0; border-top:1px dashed #ccc; margin: 10px 0;">
+                <p style="font-size:18px; color:var(--name-color); margin:5px 0;"><strong>🏆 Total Score:</strong> <span style="float:right;"><span id="statsTotal">0</span> / 100</span></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize EmailJS
+        emailjs.init("eRKMGQ0GJNG6Rjrzz");
+
         const firebaseConfig = {
             apiKey: "AIzaSyBMLvQ9Lf2uk_90NRBtgjQ5RshIDa5wFTo",
             authDomain: "happy-lab-live.firebaseapp.com",
@@ -449,11 +502,15 @@
         const appContent = document.getElementById('app-content');
         const loginBtn = document.getElementById('login-btn');
         const loginError = document.getElementById('login-error');
+        
+        let loggedInAgentName = ""; // Globally save for the My Stats modal
 
         auth.onAuthStateChanged(user => {
             if (user) {
                 let userEmail = user.email.toLowerCase(); let isLead = allowedLeads.includes(userEmail);
                 let myName = emailToNameMap[userEmail] || userEmail.split('@')[0];
+                loggedInAgentName = myName;
+
                 const myStatusRef = firebase.database().ref('presence/' + myName);
                 
                 firebase.database().ref('.info/connected').on('value', function(snapshot) {
@@ -464,6 +521,7 @@
                 if (isLead) { 
                     document.body.classList.remove('viewer-mode'); 
                     document.querySelectorAll('.editable-points').forEach(el => { el.setAttribute('contenteditable', 'true'); el.title = "Click to manually edit total points!🧪"; });
+                    document.getElementById('editRosterBtn').style.display = 'block'; // Unlocks the VIP button
                 } else { 
                     document.body.classList.add('viewer-mode'); 
                     document.querySelectorAll('.editable-points').forEach(el => { el.setAttribute('contenteditable', 'false'); el.title = ""; }); 
@@ -517,7 +575,6 @@
             return `${encodeURIComponent(name.trim())}%20background.jpg`;
         }
 
-        // Returns raw image elements for our new Global Bubble System
         function getPopupsHTML(rawName) {
             let name = rawName.trim();
             let possiblePopups = [ `${name} popup.jpg`, `${name} popup1.jpg`, `${name} popup2.jpg`, `${name} popup3.jpg`, `${name} popup4.jpg` ];
@@ -652,7 +709,6 @@
 
             function animateBubbles() {
                 bubblePhysicsData.forEach(data => {
-                    // Only move the bubble if its group is visible, and it is NOT currently clicked/focused
                     if (data.el.parentElement.classList.contains('show-bubbles') && !data.el.classList.contains('focused')) {
                         data.x += data.vx;
                         data.y += data.vy;
@@ -660,7 +716,6 @@
                         let boundsX = window.innerWidth - 120;
                         let boundsY = window.innerHeight - 120;
 
-                        // Bounce off the screen walls
                         if (data.x <= 0) { data.x = 0; data.vx *= -1; } 
                         else if (data.x >= boundsX) { data.x = boundsX; data.vx *= -1; }
                         
@@ -669,14 +724,13 @@
 
                         data.el.style.transform = `translate3d(${data.x}px, ${data.y}px, 0)`;
                     } else if (data.el.classList.contains('focused')) {
-                        // Let the CSS take over completely to center it
                         data.el.style.transform = ''; 
                     }
                 });
                 requestAnimationFrame(animateBubbles);
             }
             animateBubbles();
-        }, 1000); // Small delay to let images load before grabbing physics coordinates
+        }, 1000); 
 
         function initBouncingProducts() {
             const products = document.querySelectorAll('.bouncing-product'); const physicsData = [];
@@ -706,8 +760,64 @@
             setTimeout(() => { container.style.display = 'none'; container.innerHTML = ''; }, 12000); 
         }
         
-        // ✨ NEW BUTTON TRIGGER INSTEAD OF THE H1 TITLE
         document.getElementById('manualPillBtn').addEventListener('click', triggerPillRain);
+
+        // 🛠️ VIP ROSTER MODAL LOGIC
+        const rosterModal = document.getElementById('roster-modal');
+        document.getElementById('editRosterBtn').addEventListener('click', () => { 
+            rosterModal.classList.add('show'); 
+            document.getElementById('rosterStatus').style.display = 'none'; 
+        });
+        document.getElementById('closeRoster').addEventListener('click', () => rosterModal.classList.remove('show'));
+
+        document.getElementById('submitRosterBtn').addEventListener('click', () => {
+            const btn = document.getElementById('submitRosterBtn');
+            const action = document.getElementById('rosterAction').value;
+            const name = document.getElementById('rosterAgentName').value;
+            const role = document.getElementById('rosterAgentRole').value;
+            
+            if(!name) { alert("Oops! Please enter the Agent's name. 🧪"); return; }
+            
+            btn.innerText = "Sending... ⏳";
+            btn.disabled = true;
+
+            emailjs.send("service_gat2x5h", "template_gchvy7e", {
+                action_type: action,
+                agent_name: name,
+                agent_role: role || "N/A"
+            }).then(function() {
+                document.getElementById('rosterStatus').style.display = 'block';
+                btn.innerText = "Send Request 📩";
+                btn.disabled = false;
+                document.getElementById('rosterAgentName').value = "";
+                document.getElementById('rosterAgentRole').value = "";
+                setTimeout(() => rosterModal.classList.remove('show'), 3500);
+            }, function(error) {
+                alert("Failed to send request. Error: " + JSON.stringify(error));
+                btn.innerText = "Send Request 📩";
+                btn.disabled = false;
+            });
+        });
+
+        // 📊 MY PROGRESS MODAL LOGIC
+        const statsModal = document.getElementById('stats-modal');
+        document.getElementById('myStatsBtn').addEventListener('click', () => {
+            statsModal.classList.add('show');
+            document.getElementById('statsName').innerText = loggedInAgentName;
+            document.getElementById('statsPic').src = getAvatarUrl(loggedInAgentName);
+            
+            // Fetch live points from Firebase
+            db.child('agents/' + loggedInAgentName).once('value', snap => {
+                let data = snap.val() || { main: 0, bonus: 0 };
+                let m = parseInt(data.main) || 0;
+                let b = parseInt(data.bonus) || 0;
+                document.getElementById('statsMain').innerText = m;
+                document.getElementById('statsBonus').innerText = b;
+                document.getElementById('statsTotal').innerText = (m + b);
+            });
+        });
+        document.getElementById('closeStats').addEventListener('click', () => statsModal.classList.remove('show'));
+
 
         let finishedList = []; let agentPointData = []; 
         db.child('winners').on('value', snap => { finishedList = snap.val() || []; updateLeaderboardHTML(); });
