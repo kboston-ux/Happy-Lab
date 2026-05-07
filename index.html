@@ -55,6 +55,17 @@
             -moz-osx-font-smoothing: grayscale;
         }
 
+        /* 📱 AUTO-ZOOM RESPONSIVE SAFETY NET */
+        @media screen and (max-width: 1650px) {
+            body { zoom: 0.90; }
+        }
+        @media screen and (max-width: 1450px) {
+            body { zoom: 0.80; }
+        }
+        @media screen and (max-width: 1250px) {
+            body { zoom: 0.70; }
+        }
+
         /* 🔐 VIEWER MODE CSS */
         .viewer-mode input[type=range] { display: none !important; }
         .viewer-mode .editable-points { pointer-events: none !important; border-bottom: none !important; user-select: none !important; }
