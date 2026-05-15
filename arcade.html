@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Happy Lab Arcade</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🕹️</text></svg>">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
+    
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+
+    <style>
+        body { font-family: 'Poppins', sans-serif; background: linear-gradient(135deg, #1a2a3a 0%, #2f4f5a 100%); color: white; text-align: center; margin: 0; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;}
+        h1 { font-family: 'Playfair Display', serif; font-size: 3em; margin-bottom: 10px; color: #ffeb3b; text-shadow: 0 4px 10px rgba(0,0,0,0.5);}
+        p { margin-top: 0; color: #b5a2b5; }
+        
+        #lobby { background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); padding: 40px; border-radius: 20px; width: 400px; box-shadow: 0 15px 35px rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); }
+        .player-list { display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; margin: 20px 0; }
+        .lobby-player { display: flex; flex-direction: column; align-items: center; font-size: 12px; font-weight: bold;}
+        .lobby-player img { width: 60px; height: 60px; border-radius: 50%; border: 3px solid #ffeb3b; object-fit: cover; margin-bottom: 5px;}
+        
+        button { padding: 15px 30px; font-family: 'Poppins', sans-serif; font-weight: 800; font-size: 16px; border: none; border-radius: 12px; cursor: pointer; transition: all 0.3s; box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+        .start-btn { background: #23d160; color: white; width: 100%; margin-top: 20px;}
+        .start-btn:disabled { background: #555; color: #888; cursor: not-allowed; box-shadow: none;}
+        .start-btn:hover:not(:disabled) { transform: translateY(-2px); background: #20b855; }
+        
+        #game-area { display: none; flex-direction: column; align-items: center; margin-top: 20px;}
+        #board-container { position: relative; width: 600px; height: 600px; background: url('board.jpg') center/cover; border: 5px solid white; border-radius: 10px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+        
+        .game-piece { position: absolute; width: 40px; height: 40px; border-radius: 50%; border: 3px solid #ffeb3b; object-fit: cover; transform: translate(-50%, 50%); transition: all 0.6s cubic-bezier(0.25, 0.8, 0.25, 1); z-index: 10; box-shadow: 0 5px 10px rgba(0,0,0,0.5);}
+        .current-turn-glow { box-shadow: 0 0 20px #23d160, 0 0 40px #23d160 !important; border-color: #23d160 !important; z-index: 20;}
+
+        #controls { margin-top: 20px; background: rgba(0,0,0,0.5); padding: 20px; border-radius: 15px; width: 600px; display: flex; justify-content: space-between; align-items: center; box-sizing: border-box;}
+        #dice-btn { background: #ffeb3b; color: #1a2a3a; font-size: 20px;}
+        #dice-btn:disabled { background: #555; color: #888; cursor: not-allowed; }
+        #turn-indicator { font-size: 24px; font-weight: bold; }
+        #log { font-size: 14px; color: #ddd; max-width: 300px; text-align: right;}
+        
+        .back-btn { position: absolute; top: 20px; left: 20px; background: rgba(255,255,255,0.1); color: white; padding: 10px 15px; text-decoration: none; border-radius: 10px;}
+        .back-btn:hover { background: rgba(255,255,255,0.2); }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">⬅ Back to Lab</a>
+    
+    <div id="lobby">
+        <h1>🕹️ The Arcade</h1>
+        <p>Serums & Shedding</p>
+        <div class="player-list" id="lobby-players"></div>
+        <p id="player-count-msg" style="font-size: 12px;">Waiting for 4 players to join...</p>
+        <button id="start-btn" class="start-btn" disabled>Start Game</button>
+    </div>
+
+    <div id="game-area">
+        <h2 id="turn-indicator">Loading game...</h2>
+        <div id="board-container"></div>
+        <div id="controls">
+            <button id="dice-btn" disabled>🎲 Roll Dice</button>
+            <div id="log">Waiting for first roll...</div>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBMLvQ9Lf2uk_90NRBtgjQ5RshIDa5wFTo",
+            authDomain: "happy-lab-live.firebaseapp.com",
+            databaseURL: "https://happy-lab-live-default-rtdb.firebaseio.com",
+            projectId: "happy-lab-live",
+            storageBucket: "happy-lab-live.firebasestorage.app",
+            messagingSenderId: "690787900536",
+            appId: "1:690787900536:web:8e4e634b6b618c781ae18d"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        const auth = firebase.auth();
+
+        const emailToNameMap = { "harvey@happyhead.com": "Harvey", "yrrone@happyhead.com": "Jouls", "kboston@happyhead.com": "Ken Ji", "glyza@happyhead.com": "Glyza", "ronellyn@happyhead.com": "Rhem", "angelica@happyhead.com": "Angel", "shinneth@happyhead.com": "Shine", "lance@happyhead.com": "Lance", "lflores@happyhead.com": "Lord Jet", "molalo@happyhead.com": "Maria", "jovie@happyhead.com": "Jovie", "harrish@happyhead.com": "Vill", "marjun@happyhead.com": "MUSHII", "margarrett@happyhead.com": "Margarett", "luigie@happyhead.com": "Luigi", "argel@happyhead.com": "Argel", "adelene@happyhead.com": "Adelene" };
+        const allowedLeads = ["harvey@happyhead.com", "glyza@happyhead.com", "kboston@happyhead.com", "yrrone@happyhead.com"];
+        
+        function getAvatarUrl(name) { return (name === "Francesca" || name === "Jordan") ? `${encodeURIComponent(name)}.png` : `${encodeURIComponent(name)}.jpg`; }
+
+        let myName = "";
+        let isLead = false;
+        let isPlaying = false;
+        
+        // Exact Traps mapped to your Canvas art
+        const traps = { 9: 30, 34: 76, 40: 59, 71: 90, 80: 99, 17: 7, 54: 34, 62: 19, 87: 36, 95: 75, 98: 27 };
+
+        auth.onAuthStateChanged(user => {
+            if (!user) { window.location.href = "index.html"; return; }
+            myName = emailToNameMap[user.email.toLowerCase()] || user.email.split('@')[0];
+            isLead = allowedLeads.includes(user.email.toLowerCase());
+            
+            // Join Lobby
+            const playerRef = db.ref(`arcade/players/${myName}`);
+            playerRef.set({ name: myName, pos: 1 });
+            playerRef.onDisconnect().remove();
+        });
+
+        // Lobby Sync
+        db.ref('arcade/players').on('value', snap => {
+            if (isPlaying) return;
+            const players = snap.val() || {};
+            const names = Object.keys(players);
+            
+            document.getElementById('lobby-players').innerHTML = names.map(n => `<div class="lobby-player"><img src="${getAvatarUrl(n)}">${n}</div>`).join('');
+            
+            const startBtn = document.getElementById('start-btn');
+            if (names.length >= 4) {
+                document.getElementById('player-count-msg').innerText = "Game is ready!";
+                if (isLead || names[0] === myName) { startBtn.disabled = false; startBtn.innerText = "🎲 Start Game"; } 
+                else { startBtn.disabled = true; startBtn.innerText = "Waiting for VIP to start..."; }
+            } else {
+                document.getElementById('player-count-msg').innerText = `Waiting for ${4 - names.length} more player(s)...`;
+                startBtn.disabled = true;
+            }
+        });
+
+        document.getElementById('start-btn').addEventListener('click', () => {
+            db.ref('arcade/players').once('value', snap => {
+                const names = Object.keys(snap.val() || {});
+                // Reset all to pos 1, set turn to player 0, switch state
+                let updates = {};
+                names.forEach(n => updates[`arcade/players/${n}/pos`] = 1);
+                updates['arcade/gameState'] = 'playing';
+                updates['arcade/turnOrder'] = names;
+                updates['arcade/currentTurn'] = 0;
+                updates['arcade/log'] = "Game started!";
+                db.ref().update(updates);
+            });
+        });
+
+        // Game State Sync
+        db.ref('arcade/gameState').on('value', snap => {
+            if (snap.val() === 'playing') {
+                isPlaying = true;
+                document.getElementById('lobby').style.display = 'none';
+                document.getElementById('game-area').style.display = 'flex';
+                drawBoard();
+            } else {
+                isPlaying = false;
+                document.getElementById('lobby').style.display = 'block';
+                document.getElementById('game-area').style.display = 'none';
+            }
+        });
+
+        // Board & Physics Sync
+        db.ref('arcade').on('value', snap => {
+            if(!isPlaying) return;
+            const data = snap.val();
+            if(!data || !data.players || !data.turnOrder) return;
+
+            const turnName = data.turnOrder[data.currentTurn];
+            document.getElementById('turn-indicator').innerText = `It is ${turnName}'s turn!`;
+            document.getElementById('log').innerText = data.log || "";
+            
+            // Dice Button Logic
+            const diceBtn = document.getElementById('dice-btn');
+            if (turnName === myName) {
+                diceBtn.disabled = false; diceBtn.innerText = "🎲 Roll Dice";
+            } else {
+                diceBtn.disabled = true; diceBtn.innerText = "Waiting...";
+            }
+
+            // Update Piece Positions
+            Object.keys(data.players).forEach(name => {
+                let piece = document.getElementById(`piece-${name.replace(/\s/g, '')}`);
+                if (piece) {
+                    let pos = data.players[name].pos;
+                    let coords = getCoordinates(pos);
+                    piece.style.left = coords.x + '%';
+                    piece.style.bottom = coords.y + '%';
+                    
+                    if(name === turnName) piece.classList.add('current-turn-glow');
+                    else piece.classList.remove('current-turn-glow');
+                }
+            });
+            
+            if(data.winner) {
+                document.getElementById('turn-indicator').innerText = `🏆 ${data.winner} WINS! 🏆`;
+                diceBtn.disabled = true;
+                if(isLead) {
+                    diceBtn.innerText = "Reset Arcade"; diceBtn.disabled = false;
+                    diceBtn.onclick = () => db.ref('arcade').remove();
+                }
+            }
+        });
+
+        function getCoordinates(pos) {
+            if (pos < 1) pos = 1; if (pos > 100) pos = 100;
+            let zeroIndex = pos - 1;
+            let row = Math.floor(zeroIndex / 10);
+            let col = (row % 2 === 0) ? (zeroIndex % 10) : (9 - (zeroIndex % 10));
+            // Return percentages for CSS (Center of the square)
+            return { x: (col * 10) + 5, y: (row * 10) + 5 };
+        }
+
+        function drawBoard() {
+            db.ref('arcade/players').once('value', snap => {
+                const players = snap.val() || {};
+                const board = document.getElementById('board-container');
+                board.innerHTML = '';
+                Object.keys(players).forEach((name, i) => {
+                    let piece = document.createElement('img');
+                    piece.src = getAvatarUrl(name);
+                    piece.className = 'game-piece';
+                    piece.id = `piece-${name.replace(/\s/g, '')}`;
+                    // Slightly offset identical positions so they don't overlap perfectly
+                    piece.style.transform = `translate(calc(-50% + ${Math.random()*10-5}px), calc(50% + ${Math.random()*10-5}px))`;
+                    board.appendChild(piece);
+                });
+            });
+        }
+
+        document.getElementById('dice-btn').addEventListener('click', () => {
+            document.getElementById('dice-btn').disabled = true;
+            let roll = Math.floor(Math.random() * 6) + 1;
+            
+            db.ref('arcade').once('value', snap => {
+                let data = snap.val();
+                let currentPos = data.players[myName].pos;
+                let newPos = currentPos + roll;
+                let logMsg = `${myName} rolled a ${roll}!`;
+
+                if (newPos >= 100) {
+                    newPos = 100;
+                    db.ref().update({
+                        [`arcade/players/${myName}/pos`]: newPos,
+                        'arcade/log': `${myName} rolled a ${roll} and reached 100!`,
+                        'arcade/winner': myName
+                    });
+                    return;
+                }
+
+                // Trap Chain Reaction Logic
+                let finalPos = newPos;
+                while (traps[finalPos]) {
+                    let dest = traps[finalPos];
+                    if (dest > finalPos) logMsg += ` Found a Serum! Climbed to ${dest}.`;
+                    else logMsg += ` Hit a shedding hair! Slid down to ${dest}.`;
+                    finalPos = dest;
+                }
+
+                let nextTurn = (data.currentTurn + 1) % data.turnOrder.length;
+
+                db.ref().update({
+                    [`arcade/players/${myName}/pos`]: finalPos,
+                    'arcade/currentTurn': nextTurn,
+                    'arcade/log': logMsg
+                });
+            });
+        });
+    </script>
+</body>
+</html>
