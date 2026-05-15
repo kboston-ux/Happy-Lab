@@ -90,12 +90,17 @@
 
         auth.onAuthStateChanged(user => {
             if (!user) { window.location.href = "index.html"; return; }
-            myName = emailToNameMap[user.email.toLowerCase()] || user.email.split('@')[0];
-            isLead = allowedLeads.includes(user.email.toLowerCase());
+            
+            // Grab name and scrub illegal Firebase characters (like periods!)
+            let rawName = emailToNameMap[user.email.toLowerCase()] || user.email.split('@')[0];
+            myName = rawName.replace(/[.#$\[\]]/g, ''); 
+            
+            // Make sure you get your VIP powers even if using a different email alias
+            isLead = allowedLeads.includes(user.email.toLowerCase()) || user.email.toLowerCase().includes('kenji');
             
             // Join Lobby
             const playerRef = db.ref(`arcade/players/${myName}`);
-            playerRef.set({ name: myName, pos: 1 });
+            playerRef.set({ name: myName, pos: 1 }).catch(err => alert("Lobby Error: " + err.message));
             playerRef.onDisconnect().remove();
         });
 
