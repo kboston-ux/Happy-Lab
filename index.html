@@ -74,7 +74,7 @@
         .viewer-mode .hm-toggle-container { pointer-events: none !important; cursor: default !important; }
         .viewer-mode #resetBtn { display: none !important; }
         .viewer-mode .last-edited { display: none !important; } 
-        .viewer-mode #manualPillBtn { display: none !important; } 
+        /* Notice we removed .viewer-mode #manualPillBtn hide here so they can still trigger locally */
 
         /* 🟢 LIVE ROSTER WIDGET */
         #online-widget {
@@ -377,6 +377,7 @@
     </div>
 
     <div id="app-content">
+        <a href="arcade.html" style="position: fixed; bottom: 85px; left: 25px; padding: 12px 20px; background: rgba(26, 42, 58, 0.95); color: #ffeb3b; text-decoration: none; border-radius: 15px; font-weight: bold; font-size: 13px; z-index: 100; border: 1px solid rgba(255,255,255,0.4); box-shadow: 0 8px 25px rgba(0,0,0,0.2);">🎮 Enter Arcade</a>
         <button id="manualPillBtn" title="Make it Rain! 💊">💊</button>
         
         <div class="top-right-controls">
@@ -514,11 +515,13 @@
         const loginBtn = document.getElementById('login-btn');
         const loginError = document.getElementById('login-error');
         
-        let loggedInAgentName = ""; // Globally save for the My Stats modal
+        let loggedInAgentName = ""; 
+        let currentUserIsLead = false; // 🎙️ VIP Tracker
 
         auth.onAuthStateChanged(user => {
             if (user) {
-                let userEmail = user.email.toLowerCase(); let isLead = allowedLeads.includes(userEmail);
+                let userEmail = user.email.toLowerCase(); 
+                currentUserIsLead = allowedLeads.includes(userEmail);
                 let myName = emailToNameMap[userEmail] || userEmail.split('@')[0];
                 loggedInAgentName = myName;
 
@@ -526,13 +529,13 @@
                 
                 firebase.database().ref('.info/connected').on('value', function(snapshot) {
                     if (snapshot.val() == false) { return; }
-                    myStatusRef.onDisconnect().remove().then(function() { myStatusRef.set({ online: true, role: isLead ? 'Lead' : 'Agent' }); });
+                    myStatusRef.onDisconnect().remove().then(function() { myStatusRef.set({ online: true, role: currentUserIsLead ? 'Lead' : 'Agent' }); });
                 });
 
-                if (isLead) { 
+                if (currentUserIsLead) { 
                     document.body.classList.remove('viewer-mode'); 
                     document.querySelectorAll('.editable-points').forEach(el => { el.setAttribute('contenteditable', 'true'); el.title = "Click to manually edit total points!🧪"; });
-                    document.getElementById('editRosterBtn').style.display = 'block'; // Unlocks the VIP button
+                    document.getElementById('editRosterBtn').style.display = 'block'; 
                 } else { 
                     document.body.classList.add('viewer-mode'); 
                     document.querySelectorAll('.editable-points').forEach(el => { el.setAttribute('contenteditable', 'false'); el.title = ""; }); 
@@ -615,7 +618,7 @@
         document.getElementById('managerGrid').innerHTML = managersHTML;
 
         const teamData = [
-            { name: "Rhem", position: "MDI/QA", gender: "female" }, { name: "Harvey", position: "Lead/Daddy QA", gender: "male" }, { name: "Jouls", position: "MDI/Weekend Lead", gender: "male" },
+            { name: "Rhem", position: "MDI", gender: "female" }, { name: "Harvey", position: "Lead/Daddy", gender: "male" }, { name: "Jouls", position: "MDI/Weekend Lead", gender: "male" },
             { name: "Angel", position: "Concierge", gender: "female" }, { name: "Ken Ji", position: "Sales", gender: "male" }, { name: "Shine", position: "Concierge", gender: "female" },
             { name: "Lance", position: "MDI/Social Media", gender: "male" }, { name: "Lord Jet", position: "Concierge/Social Media", gender: "male" }, { name: "Maria", position: "Hair Specialist", gender: "female" },
             { name: "Raian", position: "Hair Specialist", gender: "male" }, { name: "Jovie", position: "Concierge/Social Media", gender: "female" }, { name: "Vill", position: "Sales", gender: "male" },
@@ -656,31 +659,67 @@
         }
         grid.innerHTML = allBottlesHTML;
 
-        // 🌟 THE "MAX 2" FIFO BUBBLE LOGIC
-        let activeAgents = []; 
+        // 🌟 THE VIP MEGAPHONE LOGIC (Profiles)
+        let globalActiveAgents = []; 
+        let localActiveAgents = []; 
+
         function toggleProfile(element, agentName) {
             let safeName = agentName.replace(/\s/g, '');
-            if (element.classList.contains('active')) {
-                element.classList.remove('active');
-                activeAgents = activeAgents.filter(n => n !== safeName);
-                let group = document.getElementById('bubble-group-' + safeName);
-                if(group) group.classList.remove('show-bubbles');
+
+            if (currentUserIsLead && !isKenjiViewer) {
+                // 🎙️ VIP Mode: Broadcast to Firebase
+                let index = globalActiveAgents.indexOf(safeName);
+                if (index > -1) {
+                    globalActiveAgents.splice(index, 1);
+                } else {
+                    globalActiveAgents.push(safeName);
+                    if (globalActiveAgents.length > 2) globalActiveAgents.shift();
+                }
+                db.child('liveEvents/activeProfiles').set(globalActiveAgents);
             } else {
-                element.classList.add('active');
-                activeAgents.push(safeName);
-                let group = document.getElementById('bubble-group-' + safeName);
-                if(group) group.classList.add('show-bubbles');
-                
-                // Enforce the Maximum of 2 constraint!
-                if (activeAgents.length > 2) {
-                    let removedSafeName = activeAgents.shift(); // Boots the oldest click out of the array
-                    let wrapper = document.querySelector(`[data-agent="${removedSafeName}"]`);
-                    if(wrapper) wrapper.classList.remove('active');
-                    let oldGroup = document.getElementById('bubble-group-' + removedSafeName);
-                    if(oldGroup) oldGroup.classList.remove('show-bubbles');
+                // 🔇 Agent Mode: Local only
+                let index = localActiveAgents.indexOf(safeName);
+                if (index > -1) {
+                    localActiveAgents.splice(index, 1);
+                    element.classList.remove('active');
+                    let group = document.getElementById('bubble-group-' + safeName);
+                    if(group) group.classList.remove('show-bubbles');
+                } else {
+                    localActiveAgents.push(safeName);
+                    element.classList.add('active');
+                    let group = document.getElementById('bubble-group-' + safeName);
+                    if(group) group.classList.add('show-bubbles');
+
+                    if (localActiveAgents.length > 2) {
+                        let removedSafeName = localActiveAgents.shift();
+                        let wrapper = document.querySelector(`[data-agent="${removedSafeName}"]`);
+                        if(wrapper) wrapper.classList.remove('active');
+                        let oldGroup = document.getElementById('bubble-group-' + removedSafeName);
+                        if(oldGroup) oldGroup.classList.remove('show-bubbles');
+                    }
                 }
             }
         }
+
+        // 🌟 THE LISTENER: Sync everyone's screen to the VIP Megaphone
+        db.child('liveEvents/activeProfiles').on('value', snap => {
+            globalActiveAgents = snap.val() || [];
+            
+            // 1. Wipe all active profiles to make a clean slate
+            document.querySelectorAll('.profile-wrapper.active').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.bubble-group.show-bubbles').forEach(el => el.classList.remove('show-bubbles'));
+            
+            // 2. Open exactly what the VIP told Firebase to open
+            globalActiveAgents.forEach(safeName => {
+                let wrapper = document.querySelector(`[data-agent="${safeName}"]`);
+                if(wrapper) wrapper.classList.add('active');
+                let group = document.getElementById('bubble-group-' + safeName);
+                if(group) group.classList.add('show-bubbles');
+            });
+            
+            // Ensure local agents don't get out of sync with the global reality
+            localActiveAgents = [...globalActiveAgents]; 
+        });
 
         // 🌟 BUILD AND INJECT THE GLOBAL BUBBLE CONTAINER
         let globalBubblesHTML = '';
@@ -772,7 +811,21 @@
             setTimeout(() => { container.style.display = 'none'; container.innerHTML = ''; }, 12000); 
         }
         
-        document.getElementById('manualPillBtn').addEventListener('click', triggerPillRain);
+        // 🌟 THE VIP MEGAPHONE LOGIC (Pill Rain)
+        document.getElementById('manualPillBtn').addEventListener('click', () => {
+            if (currentUserIsLead && !isKenjiViewer) {
+                db.child('liveEvents/pillRain').set(Date.now()); // Broadcast command
+            } else {
+                triggerPillRain(); // Local trigger for regular agents
+            }
+        });
+
+        // 🌟 THE LISTENER (Pill Rain)
+        let initialPillLoad = true;
+        db.child('liveEvents/pillRain').on('value', snap => {
+            if (initialPillLoad) { initialPillLoad = false; return; } // Stops it from raining right when you login
+            if (snap.val()) triggerPillRain();
+        });
 
         // 🛠️ VIP ROSTER MODAL LOGIC
         const rosterModal = document.getElementById('roster-modal');
