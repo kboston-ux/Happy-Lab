@@ -32,6 +32,14 @@
         .game-piece { position: absolute; width: 40px; height: 40px; border-radius: 50%; border: 3px solid #ffeb3b; object-fit: cover; transform: translate(-50%, 50%); transition: all 0.6s cubic-bezier(0.25, 0.8, 0.25, 1); z-index: 10; box-shadow: 0 5px 10px rgba(0,0,0,0.5);}
         .current-turn-glow { box-shadow: 0 0 20px #23d160, 0 0 40px #23d160 !important; border-color: #23d160 !important; z-index: 20;}
 
+        /* ✨ NEW: The Hop Animation CSS */
+        @keyframes hopPop {
+            0% { transform: translate(-50%, 50%) scale(1); margin-bottom: 0px; }
+            50% { transform: translate(-50%, 50%) scale(1.15); margin-bottom: 15px; }
+            100% { transform: translate(-50%, 50%) scale(1); margin-bottom: 0px; }
+        }
+        .hopping { animation: hopPop 0.35s ease-in-out !important; z-index: 50 !important; }
+
         #controls { margin-top: 20px; background: rgba(0,0,0,0.5); padding: 20px; border-radius: 15px; width: 600px; display: flex; justify-content: space-between; align-items: center; box-sizing: border-box;}
         #dice-btn { background: #ffeb3b; color: #1a2a3a; font-size: 20px;}
         #dice-btn:disabled { background: #555; color: #888; cursor: not-allowed; }
@@ -85,20 +93,14 @@
         let isLead = false;
         let isPlaying = false;
         
-        // Exact Traps mapped to your Canvas art (Chain reaction removed!)
         const traps = { 9: 30, 34: 76, 40: 59, 71: 90, 80: 99, 17: 7, 54: 24, 62: 19, 87: 36, 95: 75, 98: 27 };
 
         auth.onAuthStateChanged(user => {
             if (!user) { window.location.href = "index.html"; return; }
-            
-            // Grab name and scrub illegal Firebase characters (like periods!)
             let rawName = emailToNameMap[user.email.toLowerCase()] || user.email.split('@')[0];
             myName = rawName.replace(/[.#$\[\]]/g, ''); 
-            
-            // Make sure you get your VIP powers even if using a different email alias
             isLead = allowedLeads.includes(user.email.toLowerCase()) || user.email.toLowerCase().includes('kenji');
             
-            // Join Lobby
             const playerRef = db.ref(`arcade/players/${myName}`);
             playerRef.set({ name: myName, pos: 1 }).catch(err => alert("Lobby Error: " + err.message));
             playerRef.onDisconnect().remove();
@@ -113,7 +115,6 @@
             document.getElementById('lobby-players').innerHTML = names.map(n => `<div class="lobby-player"><img src="${getAvatarUrl(n)}">${n}</div>`).join('');
             
             const startBtn = document.getElementById('start-btn');
-            // Changed from 4 to 1 so the game can start with any number of players!
             if (names.length >= 1) {
                 document.getElementById('player-count-msg').innerText = "Game is ready!";
                 if (isLead || names[0] === myName) { startBtn.disabled = false; startBtn.innerText = "🎲 Start Game"; } 
@@ -127,13 +128,13 @@
         document.getElementById('start-btn').addEventListener('click', () => {
             db.ref('arcade/players').once('value', snap => {
                 const names = Object.keys(snap.val() || {});
-                // Reset all to pos 1, set turn to player 0, switch state
                 let updates = {};
                 names.forEach(n => updates[`arcade/players/${n}/pos`] = 1);
                 updates['arcade/gameState'] = 'playing';
                 updates['arcade/turnOrder'] = names;
                 updates['arcade/currentTurn'] = 0;
                 updates['arcade/log'] = "Game started!";
+                updates['arcade/lastAction'] = null; // Clear old actions
                 db.ref().update(updates);
             });
         });
@@ -152,8 +153,12 @@
             }
         });
 
-        // Board & Physics Sync
-        db.ref('arcade').on('value', snap => {
+        // ✨ NEW: The Hopping Physics Engine
+        let lastActionTs = 0;
+        let isFirstLoad = true;
+        let isAnimating = false;
+
+        db.ref('arcade').on('value', async snap => {
             if(!isPlaying) return;
             const data = snap.val();
             if(!data || !data.players || !data.turnOrder) return;
@@ -162,34 +167,79 @@
             document.getElementById('turn-indicator').innerText = `It is ${turnName}'s turn!`;
             document.getElementById('log').innerText = data.log || "";
             
-            // Dice Button Logic
             const diceBtn = document.getElementById('dice-btn');
-            if (turnName === myName) {
-                diceBtn.disabled = false; diceBtn.innerText = "🎲 Roll Dice";
-            } else {
-                diceBtn.disabled = true; diceBtn.innerText = "Waiting...";
+
+            if (isFirstLoad) {
+                if (data.lastAction) lastActionTs = data.lastAction.ts;
+                isFirstLoad = false;
             }
 
-            // Update Piece Positions
-            Object.keys(data.players).forEach(name => {
-                let piece = document.getElementById(`piece-${name.replace(/\s/g, '')}`);
+            // TRIGGER THE HOP ANIMATION
+            if (data.lastAction && data.lastAction.ts > lastActionTs) {
+                lastActionTs = data.lastAction.ts;
+                isAnimating = true;
+                diceBtn.disabled = true; // Lock dice during animation
+
+                let piece = document.getElementById(`piece-${data.lastAction.player.replace(/\s/g, '')}`);
                 if (piece) {
-                    let pos = data.players[name].pos;
-                    let coords = getCoordinates(pos);
-                    piece.style.left = coords.x + '%';
-                    piece.style.bottom = coords.y + '%';
-                    
-                    if(name === turnName) piece.classList.add('current-turn-glow');
-                    else piece.classList.remove('current-turn-glow');
+                    let currentStep = data.lastAction.start;
+                    let stepsToTake = data.lastAction.roll;
+
+                    // Speed up CSS transition for individual hops
+                    piece.style.transition = 'left 0.35s linear, bottom 0.35s linear';
+
+                    for(let i = 1; i <= stepsToTake; i++) {
+                        currentStep++;
+                        if(currentStep > 100) currentStep = 100;
+                        
+                        let coords = getCoordinates(currentStep);
+                        piece.style.left = coords.x + '%';
+                        piece.style.bottom = coords.y + '%';
+                        
+                        piece.classList.add('hopping');
+                        await new Promise(r => setTimeout(r, 350));
+                        piece.classList.remove('hopping');
+                    }
+
+                    // If they landed on a Trap or Serum, slide them smoothly
+                    if(data.lastAction.finalPos !== currentStep) {
+                        await new Promise(r => setTimeout(r, 200));
+                        piece.style.transition = 'all 0.8s ease-in-out'; // Glide up/down
+                        let coords = getCoordinates(data.lastAction.finalPos);
+                        piece.style.left = coords.x + '%';
+                        piece.style.bottom = coords.y + '%';
+                        await new Promise(r => setTimeout(r, 850));
+                    }
                 }
-            });
-            
-            if(data.winner) {
-                document.getElementById('turn-indicator').innerText = `🏆 ${data.winner} WINS! 🏆`;
-                diceBtn.disabled = true;
-                if(isLead) {
-                    diceBtn.innerText = "Reset Arcade"; diceBtn.disabled = false;
-                    diceBtn.onclick = () => db.ref('arcade').remove();
+                isAnimating = false;
+            }
+
+            // FINAL FALLBACK & UNLOCK
+            if (!isAnimating) {
+                Object.keys(data.players).forEach(name => {
+                    let piece = document.getElementById(`piece-${name.replace(/\s/g, '')}`);
+                    if (piece) {
+                        piece.style.transition = 'all 0.6s cubic-bezier(0.25, 0.8, 0.25, 1)'; // Restore normal speed
+                        let pos = data.players[name].pos;
+                        let coords = getCoordinates(pos);
+                        piece.style.left = coords.x + '%';
+                        piece.style.bottom = coords.y + '%';
+                        
+                        if(name === turnName) piece.classList.add('current-turn-glow');
+                        else piece.classList.remove('current-turn-glow');
+                    }
+                });
+
+                if(data.winner) {
+                    document.getElementById('turn-indicator').innerText = `🏆 ${data.winner} WINS! 🏆`;
+                    diceBtn.disabled = true;
+                    if(isLead) {
+                        diceBtn.innerText = "Reset Arcade"; diceBtn.disabled = false;
+                        diceBtn.onclick = () => db.ref('arcade').remove();
+                    }
+                } else {
+                    if (turnName === myName) { diceBtn.disabled = false; diceBtn.innerText = "🎲 Roll Dice"; } 
+                    else { diceBtn.disabled = true; diceBtn.innerText = "Waiting..."; }
                 }
             }
         });
@@ -199,7 +249,6 @@
             let zeroIndex = pos - 1;
             let row = Math.floor(zeroIndex / 10);
             let col = (row % 2 === 0) ? (zeroIndex % 10) : (9 - (zeroIndex % 10));
-            // Return percentages for CSS (Center of the square)
             return { x: (col * 10) + 5, y: (row * 10) + 5 };
         }
 
@@ -213,7 +262,6 @@
                     piece.src = getAvatarUrl(name);
                     piece.className = 'game-piece';
                     piece.id = `piece-${name.replace(/\s/g, '')}`;
-                    // Slightly offset identical positions so they don't overlap perfectly
                     piece.style.transform = `translate(calc(-50% + ${Math.random()*10-5}px), calc(50% + ${Math.random()*10-5}px))`;
                     board.appendChild(piece);
                 });
@@ -235,12 +283,12 @@
                     db.ref().update({
                         [`arcade/players/${myName}/pos`]: newPos,
                         'arcade/log': `${myName} rolled a ${roll} and reached 100!`,
-                        'arcade/winner': myName
+                        'arcade/winner': myName,
+                        'arcade/lastAction': { player: myName, start: currentPos, roll: roll, finalPos: 100, ts: Date.now() }
                     });
                     return;
                 }
 
-                // Trap Chain Reaction Logic
                 let finalPos = newPos;
                 while (traps[finalPos]) {
                     let dest = traps[finalPos];
@@ -254,7 +302,8 @@
                 db.ref().update({
                     [`arcade/players/${myName}/pos`]: finalPos,
                     'arcade/currentTurn': nextTurn,
-                    'arcade/log': logMsg
+                    'arcade/log': logMsg,
+                    'arcade/lastAction': { player: myName, start: currentPos, roll: roll, finalPos: finalPos, ts: Date.now() }
                 });
             });
         });
