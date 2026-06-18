@@ -968,19 +968,41 @@
             db.child('weeklyHistory/'+agentName).once('value', snap => {
                 let data = snap.val();
                 if (!data) { c.innerHTML='<p style="font-size:12px;color:#999;text-align:center;">No history yet...</p>'; return; }
+
+                // Step 1: Group entries by week, keep the HIGHEST total reached that week
                 let weekMap = {};
                 Object.values(data).forEach(entry => {
                     let info = getWeekInfo(entry.timestamp), key = info.mondayStr;
-                    if (!weekMap[key]||entry.total>weekMap[key].total) weekMap[key]={...entry,weekNum:info.weekNum,range:info.range};
+                    if (!weekMap[key] || entry.total > weekMap[key].total) {
+                        weekMap[key] = { ...entry, weekNum: info.weekNum, range: info.range, mondayStr: key };
+                    }
                 });
-                let weeks = Object.values(weekMap).sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
-                let best  = Math.max(...weeks.map(w=>w.total));
-                c.innerHTML = weeks.map(w=>`
-                    <div class="week-row ${w.total===best&&w.total>0?'personal-best':''}">
-                        <div><div class="week-label">Week ${w.weekNum}</div><div class="week-range">${w.range}</div></div>
+
+                // Step 2: Sort weeks OLDEST first so we can calculate differences correctly
+                let weeks = Object.values(weekMap).sort((a, b) => new Date(a.mondayStr) - new Date(b.mondayStr));
+
+                // Step 3: Calculate points GAINED each week (difference from previous week's highest)
+                weeks = weeks.map((week, idx) => {
+                    let prevTotal = idx === 0 ? 0 : weeks[idx - 1].total;
+                    let gained = Math.max(0, week.total - prevTotal);
+                    return { ...week, gained };
+                });
+
+                // Step 4: Find best week by points GAINED (not total)
+                let bestGained = Math.max(...weeks.map(w => w.gained));
+
+                // Step 5: Sort NEWEST first for display
+                weeks = weeks.sort((a, b) => new Date(b.mondayStr) - new Date(a.mondayStr));
+
+                c.innerHTML = weeks.map(w => `
+                    <div class="week-row ${w.gained === bestGained && w.gained > 0 ? 'personal-best' : ''}">
+                        <div>
+                            <div class="week-label">Week ${w.weekNum}</div>
+                            <div class="week-range">${w.range}</div>
+                        </div>
                         <div style="text-align:right;">
-                            <div class="week-pts">${w.total} pts</div>
-                            ${w.total===best&&w.total>0?'<div class="week-best-tag">🏆 Personal Best</div>':''}
+                            <div class="week-pts">+${w.gained} pts</div>
+                            ${w.gained === bestGained && w.gained > 0 ? '<div class="week-best-tag">🏆 Best Week</div>' : ''}
                         </div>
                     </div>`).join('');
             });
