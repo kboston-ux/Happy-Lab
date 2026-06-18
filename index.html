@@ -394,6 +394,26 @@
         .week-range { font-size: 11px; color: #888; margin-top: 2px; }
         .week-pts { font-weight: 800; font-size: 16px; color: var(--name-color); }
         .week-best-tag { font-size: 10px; color: #f0a500; font-weight: 700; margin-top: 2px; }
+
+        /* PHOTO CLOSE BUTTON */
+        #photo-close-btn {
+            display: none;
+            position: fixed;
+            top: 25px;
+            right: 40px;
+            font-size: 55px;
+            color: white;
+            cursor: pointer;
+            z-index: 9999999;
+            font-family: sans-serif;
+            font-weight: bold;
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.8));
+            transition: transform 0.2s, color 0.2s;
+        }
+        #photo-close-btn:hover {
+            transform: scale(1.15);
+            color: var(--gold);
+        }
     </style>
 </head>
 <body>
@@ -849,14 +869,33 @@
         document.body.appendChild(bc);
 
         setTimeout(() => {
+            // Create the X button and add it to the page
+            const closePhotoBtn = document.createElement('div');
+            closePhotoBtn.id = 'photo-close-btn';
+            closePhotoBtn.innerHTML = '&times;';
+            document.body.appendChild(closePhotoBtn);
+
+            // Hide the photo when the X is clicked
+            closePhotoBtn.addEventListener('click', () => {
+                document.querySelectorAll('.popup-bubble.focused').forEach(x => x.classList.remove('focused'));
+                closePhotoBtn.style.display = 'none';
+            });
+
             let bpd = [];
             document.querySelectorAll('.popup-bubble').forEach(b => {
                 bpd.push({ el:b, x:Math.random()*(window.innerWidth-120), y:Math.random()*(window.innerHeight-120), vx:(Math.random()>0.5?1:-1)*(1.5+Math.random()*2), vy:(Math.random()>0.5?1:-1)*(1.5+Math.random()*2) });
+                
                 b.addEventListener('click', function(e) {
                     e.stopPropagation();
+                    let wasFocused = this.classList.contains('focused');
                     document.querySelectorAll('.popup-bubble.focused').forEach(x => x.classList.remove('focused'));
-                    if (!this.classList.contains('focused')) this.classList.add('focused');
-                    else this.classList.remove('focused');
+                    
+                    if (!wasFocused) {
+                        this.classList.add('focused');
+                        closePhotoBtn.style.display = 'block';
+                    } else {
+                        closePhotoBtn.style.display = 'none';
+                    }
                 });
             });
             function animBubbles() {
@@ -1001,7 +1040,7 @@
                             <div class="week-range">${w.range}</div>
                         </div>
                         <div style="text-align:right;">
-                            <div class="week-pts">+${w.gained} pts</div>
+                            <div class="week-pts">${w.gained} points</div>
                             ${w.gained === bestGained && w.gained > 0 ? '<div class="week-best-tag">🏆 Best Week</div>' : ''}
                         </div>
                     </div>`).join('');
