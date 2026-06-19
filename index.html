@@ -418,7 +418,11 @@
 </head>
 <body>
 
+    <!-- =============================================
+         LOGIN SCREEN — FIX 1: bouncing products
+         ============================================= -->
     <div id="login-screen">
+        <!-- Decorative products float behind the login box -->
         <img src="Dandruff.png"           class="login-decor" id="ld-dandruff"    style="width:180px;">
         <img src="DNA.png"                class="login-decor" id="ld-dna"         style="width:150px;">
         <img src="LLLLT.png"              class="login-decor" id="ld-llllt"       style="width:170px;">
@@ -441,6 +445,7 @@
         <button id="manualPillBtn" title="Make it Rain! 💊">💊</button>
 
         <div class="top-right-controls">
+            <!-- New Testing Button specifically for kboston -->
             <button id="testTutorialBtn" style="display:none; background: #ffeb3b; color: #1a2a3a;">🔍 Test Tutorial</button>
 
             <button id="editRosterBtn" style="display:none;">⚙️ Edit Roster</button>
@@ -465,6 +470,7 @@
         <img src="grey.png"                class="bouncing-product" id="decor-grey">
         <img src="Background.png"          class="bouncing-product" id="decor-background-img">
 
+        <!-- FIX 4: leaderboard sections wrapped in divider cards -->
         <div id="leaderboard">
             <h3>🧪 Lab Leaderboard</h3>
             <div class="leaderboard-section">
@@ -514,6 +520,7 @@
         <button id="resetBtn">🔄 Reset Board</button>
     </div>
 
+    <!-- WELCOME TUTORIAL MODAL -->
     <div id="tutorial-modal" class="custom-modal">
         <div class="modal-content" style="width: 450px; text-align: left;">
             <h2 style="font-family:'Playfair Display',serif;color:var(--name-color);margin-top:0; text-align:center;">Welcome to the Happy Lab! 🧪</h2>
@@ -531,6 +538,7 @@
         </div>
     </div>
 
+    <!-- ROSTER MODAL -->
     <div id="roster-modal" class="custom-modal">
         <div class="modal-content">
             <span class="close-modal" id="closeRoster">&times;</span>
@@ -548,6 +556,7 @@
         </div>
     </div>
 
+    <!-- MY PROGRESS MODAL -->
     <div id="stats-modal" class="custom-modal">
         <div class="modal-content" style="width:380px;max-height:85vh;overflow-y:auto;">
             <span class="close-modal" id="closeStats">&times;</span>
@@ -598,7 +607,9 @@
             "shinneth@happyhead.com": "Shine", "lance@happyhead.com": "Lance", "lflores@happyhead.com": "Lord Jet",
             "molalo@happyhead.com": "Maria", "jovie@happyhead.com": "Jovie", "harrish@happyhead.com": "Vill",
             "marjun@happyhead.com": "MUSHII", "margarrett@happyhead.com": "Margarett", "luigie@happyhead.com": "Luigi",
-            "argel@happyhead.com": "Argel", "adelene@happyhead.com": "Adelene"
+            "argel@happyhead.com": "Argel", "adelene@happyhead.com": "Adelene",
+            "layla@happyhead.com": "Layla", "harvey.telen@happyhead.com": "Harvey T", "janica@happyhead.com": "Janica",
+            "reynier@happyhead.com": "Rynier", "mark.burdeos@happyhead.com": "Mark", "brandon@happyhead.com": "Brandon"
         };
 
         const allowedLeads  = ["harvey@happyhead.com","glyza@happyhead.com","kboston@happyhead.com","yrrone@happyhead.com"];
@@ -795,7 +806,13 @@
             { name:"Luigi",    position:"Hair Specialist",         gender:"male"   },
             { name:"Argel",    position:"Hair Specialist",         gender:"male"   },
             { name:"Seph",     position:"Hair Specialist",         gender:"male"   },
-            { name:"Adelene",  position:"Hair Specialist",         gender:"female" }
+            { name:"Adelene",  position:"Hair Specialist",         gender:"female" },
+            { name:"Layla",    position:"Hair Specialist",         gender:"female" },
+            { name:"Harvey T", position:"Hair Specialist",         gender:"male"   },
+            { name:"Janica",   position:"Hair Specialist",         gender:"female" },
+            { name:"Rynier",   position:"Hair Specialist",         gender:"male"   },
+            { name:"Mark",     position:"Hair Specialist",         gender:"male"   },
+            { name:"Brandon",  position:"Hair Specialist",         gender:"male"   }
         ];
 
         const simpleDotMembers = ["Harvey","Jouls","Ken Ji"];
@@ -1146,4 +1163,181 @@
             const list = document.getElementById('rankList');
             if (!finishedList.length) { list.innerHTML='<p style="font-size:11px;opacity:0.6;">Waiting for first finisher...🧪</p>'; return; }
             list.innerHTML = finishedList.map((n,i)=>`<div class="rank-item rank-${i+1}"><div class="rank-num">${i+1}</div><span>${n} ${i===0?'<img src="crown.gif" class="rank-crown">':i===1?"🥈":i===2?"🥉":""}</span></div>`).join('');
-            document.querySelectorAll('.crown
+            document.querySelectorAll('.crown').forEach(c=>c.classList.remove('show-crown'));
+            if (finishedList.length) {
+                let fi = teamData.findIndex(m=>m.name===finishedList[0])+1;
+                if (fi>0) document.getElementById('crown'+fi).classList.add('show-crown');
+                document.getElementById('managerGrid').classList.add('celebrate');
+            } else { document.getElementById('managerGrid').classList.remove('celebrate'); }
+        }
+        function updateCombinedLeaderboard() {
+            let pl = document.getElementById('pointList');
+            if (!agentPointData.length) { pl.innerHTML='<p style="font-size:11px;opacity:0.6;">Waiting for first point...🧪</p>'; return; }
+            let rank=1;
+            for (let i=0;i<agentPointData.length;i++) { if(i>0&&agentPointData[i].total<agentPointData[i-1].total) rank++; agentPointData[i].rank=rank; }
+            pl.innerHTML = agentPointData.map(a=>`<div class="rank-item rank-${a.rank}"><div class="rank-num">${a.rank}</div><span>${a.name} <span class="point-total">${a.total} pts</span> ${a.rank===1&&a.total>0?"🥇":a.rank===2&&a.total>0?"🥈":a.rank===3&&a.total>0?"🥉":""}</span></div>`).join('');
+        }
+
+        function getAuditData() {
+            let email = auth.currentUser ? auth.currentUser.email : "unknown";
+            return { shortName: email.split('@')[0], timeString: new Date().toLocaleString('en-US') };
+        }
+
+        /* FIX 11: show saved checkmark */
+        function showSaveConfirm(cardIndex) {
+            let el = document.getElementById('saveConfirm'+cardIndex);
+            if (!el) return;
+            el.classList.add('show');
+            clearTimeout(el._timer);
+            el._timer = setTimeout(() => el.classList.remove('show'), 2000);
+        }
+
+        /* SLIDERS + WEEKLY HISTORY LOGGING */
+        for (let i=1; i<=teamData.length; i++) {
+            let mS  = document.getElementById('mainSlider'+i);
+            let bS  = document.getElementById('bonusSlider'+i);
+            let liq = document.getElementById('liquid'+i);
+            let sN  = document.getElementById('score-num'+i);
+            let prf = document.getElementById('profile'+i);
+            let crd = document.getElementById('card'+i);
+            let shakeTimer;
+            let memberName = teamData[i-1].name;
+            let liquidReady = false; // FIX 7: prevent snap on first load
+
+            function updateVisuals(isSync=false) {
+                let mV=parseInt(mS.value)||0, bV=parseInt(bS.value)||0;
+                /* FIX 7: only animate liquid after first sync */
+                if (liquidReady) liq.style.height = mV+'%';
+                sN.innerText = mV+bV;
+                mS.style.setProperty('--val',  mV+'%');
+                bS.style.setProperty('--b-val', bV+'%');
+                if (mV===100) {
+                    prf.className='profile-pic maxed-ring';
+                    crd.classList.add('maxed');
+                    /* FIX 8: gold flash on the maxed card itself */
+                    if (!finishedList.includes(memberName)) {
+                        db.child('winners').set([...finishedList,memberName]);
+                        if (!isSync) {
+                            crd.classList.add('maxed-flash');
+                            setTimeout(()=>crd.classList.remove('maxed-flash'),1000);
+                            triggerPillRain();
+                            for (let j=1;j<=teamData.length;j++) {
+                                if(i!==j) {
+                                    const cc=document.getElementById('card'+j);
+                                    cc.classList.add('trigger-congrats');
+                                    setTimeout(()=>cc.classList.remove('trigger-congrats'),2500);
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    prf.className = mV>0 ? 'profile-pic in-progress' : 'profile-pic';
+                    crd.classList.remove('maxed');
+                    if (finishedList.includes(memberName)) db.child('winners').set(finishedList.filter(n=>n!==memberName));
+                }
+                if (bV>0&&mV===100) { crd.classList.add('has-bonus'); crd.style.setProperty('--finish-p',bV+'%'); }
+                else                { crd.classList.remove('has-bonus'); crd.style.setProperty('--finish-p','0%'); }
+            }
+
+            function logWeeklyHistory(name, mVal, bVal) {
+                let a = getAuditData();
+                db.child('weeklyHistory/'+name).push({ total:parseInt(mVal)+parseInt(bVal), timestamp:new Date().toISOString(), editedBy:a.shortName });
+            }
+
+            mS.addEventListener('input', () => {
+                updateVisuals(false);
+                let a=getAuditData();
+                db.child('agents/'+memberName).update({ main:mS.value, lastEditedBy:a.shortName, lastEditedAt:a.timeString });
+                logWeeklyHistory(memberName, mS.value, bS.value);
+                showSaveConfirm(i);
+            });
+            bS.addEventListener('input', () => {
+                updateVisuals(false);
+                let a=getAuditData();
+                db.child('agents/'+memberName).update({ bonus:bS.value, lastEditedBy:a.shortName, lastEditedAt:a.timeString });
+                logWeeklyHistory(memberName, mS.value, bS.value);
+                crd.classList.add('bonus-shake'); clearTimeout(shakeTimer); shakeTimer=setTimeout(()=>crd.classList.remove('bonus-shake'),400);
+                showSaveConfirm(i);
+            });
+
+            db.child('agents/'+memberName).on('value', snap => {
+                const data=snap.val(); if(!data) return;
+                if(document.activeElement!==mS) mS.value=data.main||0;
+                if(document.activeElement!==bS) bS.value=data.bonus||0;
+                if(document.activeElement!==sN) {
+                    updateVisuals(true);
+                    /* FIX 7: after first sync, set liquid then enable transitions */
+                    if (!liquidReady) {
+                        liq.style.transition = 'none';
+                        liq.style.height = '0%';
+                        requestAnimationFrame(() => {
+                            requestAnimationFrame(() => {
+                                liq.style.transition = '';
+                                liq.style.height = (parseInt(mS.value)||0)+'%';
+                                liquidReady = true;
+                            });
+                        });
+                    }
+                }
+                const el=document.getElementById('lastEdited'+i);
+                if(data.lastEditedBy) { el.innerText=`Updated by ${data.lastEditedBy}`; el.title=data.lastEditedAt; }
+            });
+
+            function updateManualPoints(e) {
+                if(e.type==='keypress'&&e.key!=='Enter') return;
+                e.preventDefault(); sN.blur();
+                let nP=parseInt(sN.innerText)||0;
+                if(isNaN(nP)) { alert("Only whole numbers! 🧪"); return; }
+                nP=Math.max(0,Math.min(200,nP));
+                mS.value=Math.min(100,nP); bS.value=Math.max(0,nP-100);
+                updateVisuals(false);
+                if(bS.value>0){crd.classList.add('bonus-shake');clearTimeout(shakeTimer);shakeTimer=setTimeout(()=>crd.classList.remove('bonus-shake'),400);}
+                let a=getAuditData();
+                db.child('agents/'+memberName).update({main:mS.value,bonus:bS.value,lastEditedBy:a.shortName,lastEditedAt:a.timeString});
+                logWeeklyHistory(memberName,mS.value,bS.value);
+                showSaveConfirm(i);
+            }
+            sN.addEventListener('blur',     updateManualPoints);
+            sN.addEventListener('keypress', updateManualPoints);
+        }
+
+        /* RECOGNITION SYNC */
+        function syncRecognition(inputId, picId, dbKey, bgId) {
+            const inp=document.getElementById(inputId), pic=picId?document.getElementById(picId):null, bg=bgId?document.getElementById(bgId):null;
+            function updBg(n) { if(bg){if(n&&n.trim()!==''){bg.src=`${encodeURIComponent(n.trim())}%20highlight%20background.jpg`;}else{bg.style.display='none';bg.src='';}} }
+            inp.addEventListener('input', e => { let v=e.target.value; if(pic) pic.src=getAvatarUrl(v); db.child('recognition/'+dbKey).set(v); updBg(v); });
+            db.child('recognition/'+dbKey).on('value', snap => { const v=snap.val()||''; if(document.activeElement!==inp){inp.value=v;if(pic)pic.src=getAvatarUrl(v);} updBg(v); });
+        }
+        syncRecognition('perf-name','perf-pic','perfName','perf-bg');
+        syncRecognition('perf-stats',null,'perfStats',null);
+        syncRecognition('behav-name','behav-pic','behavName','behav-bg');
+        syncRecognition('behav-stats',null,'behavStats',null);
+        syncRecognition('hm-name','hm-pic','hmName','hm-bg');
+        syncRecognition('hm-stats',null,'hmStats',null);
+
+        const hmToggle=document.getElementById('hm-toggle'), hmCard=document.getElementById('hm-card');
+        hmToggle.addEventListener('change', e=>{ hmCard.style.display=e.target.checked?'block':'none'; db.child('recognition/hmToggleState').set(e.target.checked); });
+        db.child('recognition/hmToggleState').on('value', snap=>{ let c=snap.val()||false; hmToggle.checked=c; hmCard.style.display=c?'block':'none'; });
+
+        /* RESET BOARD */
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            if(confirm('Are you sure you want to reset ALL progress? This cannot be undone! 🧪'))
+                if(confirm('Wait, are you REALLY sure? The Fun Police (Jordan) is watching! 🚨👮‍♂️'))
+                    if(confirm('Final warning! Really, really, REALLY sure? 💥🗑️'))
+                        db.remove().then(()=>location.reload());
+        });
+
+        /* TUTORIAL MODAL CONTROLS */
+        document.getElementById('closeTutorialBtn').addEventListener('click', () => {
+            document.getElementById('tutorial-modal').classList.remove('show');
+            // Save to Firebase so they never see it again
+            db.child('agents/' + loggedInAgentName).update({ hasSeenTutorial: true });
+        });
+
+        document.getElementById('testTutorialBtn').addEventListener('click', () => {
+            // Let Ken Ji replay it instantly on demand
+            document.getElementById('tutorial-modal').classList.add('show');
+        });
+    </script>
+</body>
+</html>
