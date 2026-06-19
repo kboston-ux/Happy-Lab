@@ -445,6 +445,9 @@
         <button id="manualPillBtn" title="Make it Rain! 💊">💊</button>
 
         <div class="top-right-controls">
+            <!-- New Testing Button specifically for kboston -->
+            <button id="testTutorialBtn" style="display:none; background: #ffeb3b; color: #1a2a3a;">🔍 Test Tutorial</button>
+
             <button id="editRosterBtn" style="display:none;">⚙️ Edit Roster</button>
             <button id="myStatsBtn">📊 My Progress</button>
             <button id="logoutBtn">🚪 Logout</button>
@@ -515,6 +518,24 @@
         <h1>Happy Lab 🧪</h1>
         <div class="bottle-container" id="bottleGrid"></div>
         <button id="resetBtn">🔄 Reset Board</button>
+    </div>
+
+    <!-- WELCOME TUTORIAL MODAL -->
+    <div id="tutorial-modal" class="custom-modal">
+        <div class="modal-content" style="width: 450px; text-align: left;">
+            <h2 style="font-family:'Playfair Display',serif;color:var(--name-color);margin-top:0; text-align:center;">Welcome to the Happy Lab! 🧪</h2>
+            <p style="font-size:13px;color:#666;text-align:center;margin-bottom:20px;">Let's get you up to speed on how your new dashboard works.</p>
+            
+            <div style="background:#f4f4f4;border-radius:10px;padding:15px;margin-bottom:15px;color:#1a2a3a;font-size:13px;line-height:1.6;">
+                <p><strong>🍾 Your Magic Bottle:</strong> Your bottle fills up as you earn Main and Bonus points. Max it out to 100 to trigger a special celebration!</p>
+                <p><strong>📊 Tracking Progress:</strong> Check the <em>Lab Leaderboard</em> on the left to see who is leading in total points and who has successfully finished their bottles.</p>
+                <p><strong>🌟 Recognition Panel:</strong> Keep an eye on the right side of the screen for weekly Top Performers, Top Behaviors, and Honorable Mentions.</p>
+                <p><strong>🟢 Live Roster:</strong> The widget in the bottom left shows exactly who is currently online and active in the lab.</p>
+                <p><strong>✨ Interactive Fun:</strong> Try clicking on different agent profile pictures or manager photos to see what happens!</p>
+            </div>
+            
+            <button id="closeTutorialBtn" class="login-btn" style="width:100%;">I'm ready to enter the Lab! 🔬</button>
+        </div>
     </div>
 
     <!-- ROSTER MODAL -->
@@ -655,7 +676,10 @@
                     document.querySelectorAll('.editable-points').forEach(el => { el.setAttribute('contenteditable','false'); el.title=""; });
                 }
 
-                if (userEmail === 'kboston@happyhead.com') document.getElementById('kenjiToggleBtn').style.display = 'block';
+                if (userEmail === 'kboston@happyhead.com') {
+                    document.getElementById('kenjiToggleBtn').style.display = 'block';
+                    document.getElementById('testTutorialBtn').style.display = 'block'; // Show test button for kboston
+                }
 
                 loginScreen.style.opacity = '0';
                 setTimeout(() => {
@@ -663,6 +687,17 @@
                     appContent.style.display  = 'block';
                     /* FIX 6: trigger staggered card entrance after page shows */
                     setTimeout(triggerCardEntrance, 100);
+
+                    // --- TUTORIAL LOGIC START ---
+                    db.child('agents/' + loggedInAgentName + '/hasSeenTutorial').once('value', snap => {
+                        let hasSeen = snap.val();
+                        if (!hasSeen) {
+                            // Show tutorial if it's their first time
+                            document.getElementById('tutorial-modal').classList.add('show');
+                        }
+                    });
+                    // --- TUTORIAL LOGIC END ---
+
                 }, 500);
             } else {
                 loginScreen.style.display = 'flex';
@@ -1244,6 +1279,18 @@
                 if(confirm('Wait, are you REALLY sure? The Fun Police (Jordan) is watching! 🚨👮‍♂️'))
                     if(confirm('Final warning! Really, really, REALLY sure? 💥🗑️'))
                         db.remove().then(()=>location.reload());
+        });
+
+        /* TUTORIAL MODAL CONTROLS */
+        document.getElementById('closeTutorialBtn').addEventListener('click', () => {
+            document.getElementById('tutorial-modal').classList.remove('show');
+            // Save to Firebase so they never see it again
+            db.child('agents/' + loggedInAgentName).update({ hasSeenTutorial: true });
+        });
+
+        document.getElementById('testTutorialBtn').addEventListener('click', () => {
+            // Let Ken Ji replay it instantly on demand
+            document.getElementById('tutorial-modal').classList.add('show');
         });
     </script>
 </body>
