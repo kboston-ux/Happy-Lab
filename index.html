@@ -418,11 +418,7 @@
 </head>
 <body>
 
-    <!-- =============================================
-         LOGIN SCREEN — FIX 1: bouncing products
-         ============================================= -->
     <div id="login-screen">
-        <!-- Decorative products float behind the login box -->
         <img src="Dandruff.png"           class="login-decor" id="ld-dandruff"    style="width:180px;">
         <img src="DNA.png"                class="login-decor" id="ld-dna"         style="width:150px;">
         <img src="LLLLT.png"              class="login-decor" id="ld-llllt"       style="width:170px;">
@@ -445,7 +441,6 @@
         <button id="manualPillBtn" title="Make it Rain! 💊">💊</button>
 
         <div class="top-right-controls">
-            <!-- New Testing Button specifically for kboston -->
             <button id="testTutorialBtn" style="display:none; background: #ffeb3b; color: #1a2a3a;">🔍 Test Tutorial</button>
 
             <button id="editRosterBtn" style="display:none;">⚙️ Edit Roster</button>
@@ -470,7 +465,6 @@
         <img src="grey.png"                class="bouncing-product" id="decor-grey">
         <img src="Background.png"          class="bouncing-product" id="decor-background-img">
 
-        <!-- FIX 4: leaderboard sections wrapped in divider cards -->
         <div id="leaderboard">
             <h3>🧪 Lab Leaderboard</h3>
             <div class="leaderboard-section">
@@ -520,7 +514,6 @@
         <button id="resetBtn">🔄 Reset Board</button>
     </div>
 
-    <!-- WELCOME TUTORIAL MODAL -->
     <div id="tutorial-modal" class="custom-modal">
         <div class="modal-content" style="width: 450px; text-align: left;">
             <h2 style="font-family:'Playfair Display',serif;color:var(--name-color);margin-top:0; text-align:center;">Welcome to the Happy Lab! 🧪</h2>
@@ -528,8 +521,8 @@
             
             <div style="background:#f4f4f4;border-radius:10px;padding:15px;margin-bottom:15px;color:#1a2a3a;font-size:13px;line-height:1.6;">
                 <p><strong>🍾 Your Magic Bottle:</strong> Your bottle fills up as you earn Main and Bonus points. Max it out to 100 to trigger a special celebration!</p>
-                <p><strong>📊 Tracking Progress:</strong> Look to your left at the <em>Lab Leaderboard</em> to see who's dominating the board. <strong>Then, do yourself a favor and FUCKING CHECK YOUR WEEKLY STATS—smash that "📊 My Progress" button in the top right every single week!</strong></p>
-                <p><strong>🌟 Recognition Panel:</strong> Want your name on the board? Keep your eyes on the right side of the screen. Crush the competition to become a Weekly Top Performer, drive the best results to claim Top Behavior, or keep grinding to secure an Honorable Mention.</p>
+                <p><strong>📊 Tracking Progress:</strong> Check the <em>Lab Leaderboard</em> on the left to see who is leading. <strong>IMPORTANT: Make sure to check your personal stats EVERY WEEK by clicking the "📊 My Progress" button in the top right!</strong></p>
+                <p><strong>🌟 Recognition Panel:</strong> Keep an eye on the right side of the screen for weekly Top Performers, Top Behaviors, and Honorable Mentions.</p>
                 <p><strong>🟢 Live Roster:</strong> The widget in the bottom left shows exactly who is currently online and active in the lab.</p>
                 <p><strong>✨ Interactive Fun:</strong> Try clicking on different agent profile pictures or manager photos to see what happens!</p>
             </div>
@@ -538,7 +531,6 @@
         </div>
     </div>
 
-    <!-- ROSTER MODAL -->
     <div id="roster-modal" class="custom-modal">
         <div class="modal-content">
             <span class="close-modal" id="closeRoster">&times;</span>
@@ -556,7 +548,6 @@
         </div>
     </div>
 
-    <!-- MY PROGRESS MODAL -->
     <div id="stats-modal" class="custom-modal">
         <div class="modal-content" style="width:380px;max-height:85vh;overflow-y:auto;">
             <span class="close-modal" id="closeStats">&times;</span>
@@ -844,18 +835,41 @@
             </div>`;
         }).join('');
 
-        /* TOGGLE PROFILE (FIXED) */
+        /* TOGGLE PROFILE (FIXED & VIP AUTO-HIDE) */
         let globalActiveAgents = [];
         let localActiveAgents  = [];
+        let managerTimeouts    = {};
 
         function toggleProfile(element, agentName) {
             let safeName = agentName.replace(/\s/g,'');
+            let isManager = element.classList.contains('manager-wrapper');
+
             if (currentUserIsLead && !isKenjiViewer) {
                 db.child('liveEvents/activeProfiles').once('value', snap => {
                     let current = snap.val() || [];
                     let idx = current.indexOf(safeName);
-                    if (idx > -1) { current.splice(idx, 1); }
-                    else          { current.push(safeName); if (current.length > 2) current.shift(); }
+                    if (idx > -1) { 
+                        current.splice(idx, 1); 
+                        if (isManager && managerTimeouts[safeName]) clearTimeout(managerTimeouts[safeName]);
+                    }
+                    else { 
+                        current.push(safeName); 
+                        if (current.length > 2) current.shift(); 
+                        
+                        if (isManager) {
+                            if (managerTimeouts[safeName]) clearTimeout(managerTimeouts[safeName]);
+                            managerTimeouts[safeName] = setTimeout(() => {
+                                db.child('liveEvents/activeProfiles').once('value', snap2 => {
+                                    let curr2 = snap2.val() || [];
+                                    let i = curr2.indexOf(safeName);
+                                    if (i > -1) {
+                                        curr2.splice(i, 1);
+                                        db.child('liveEvents/activeProfiles').set(curr2);
+                                    }
+                                });
+                            }, 4000);
+                        }
+                    }
                     db.child('liveEvents/activeProfiles').set(current);
                 });
             } else {
@@ -865,6 +879,7 @@
                     element.classList.remove('active');
                     let g = document.getElementById('bubble-group-'+safeName);
                     if (g) g.classList.remove('show-bubbles');
+                    if (isManager && managerTimeouts[safeName]) clearTimeout(managerTimeouts[safeName]);
                 } else {
                     localActiveAgents.push(safeName);
                     element.classList.add('active');
@@ -877,13 +892,27 @@
                         let og  = document.getElementById('bubble-group-'+old);
                         if (og) og.classList.remove('show-bubbles');
                     }
+                    
+                    if (isManager) {
+                        if (managerTimeouts[safeName]) clearTimeout(managerTimeouts[safeName]);
+                        managerTimeouts[safeName] = setTimeout(() => {
+                            let i = localActiveAgents.indexOf(safeName);
+                            if (i > -1) {
+                                localActiveAgents.splice(i, 1);
+                                element.classList.remove('active');
+                                let bg = document.getElementById('bubble-group-'+safeName);
+                                if (bg) bg.classList.remove('show-bubbles');
+                            }
+                        }, 4000);
+                    }
                 }
             }
         }
 
         db.child('liveEvents/activeProfiles').on('value', snap => {
             globalActiveAgents = snap.val() || [];
-            document.querySelectorAll('.profile-wrapper.active').forEach(el => el.classList.remove('active'));
+            // FIX: Ensure manager-wrappers are also targeted for active class removal
+            document.querySelectorAll('.profile-wrapper.active, .manager-wrapper.active').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.bubble-group.show-bubbles').forEach(el => el.classList.remove('show-bubbles'));
             globalActiveAgents.forEach(s => {
                 let w = document.querySelector(`[data-agent="${s}"]`); if (w) w.classList.add('active');
@@ -1117,181 +1146,4 @@
             const list = document.getElementById('rankList');
             if (!finishedList.length) { list.innerHTML='<p style="font-size:11px;opacity:0.6;">Waiting for first finisher...🧪</p>'; return; }
             list.innerHTML = finishedList.map((n,i)=>`<div class="rank-item rank-${i+1}"><div class="rank-num">${i+1}</div><span>${n} ${i===0?'<img src="crown.gif" class="rank-crown">':i===1?"🥈":i===2?"🥉":""}</span></div>`).join('');
-            document.querySelectorAll('.crown').forEach(c=>c.classList.remove('show-crown'));
-            if (finishedList.length) {
-                let fi = teamData.findIndex(m=>m.name===finishedList[0])+1;
-                if (fi>0) document.getElementById('crown'+fi).classList.add('show-crown');
-                document.getElementById('managerGrid').classList.add('celebrate');
-            } else { document.getElementById('managerGrid').classList.remove('celebrate'); }
-        }
-        function updateCombinedLeaderboard() {
-            let pl = document.getElementById('pointList');
-            if (!agentPointData.length) { pl.innerHTML='<p style="font-size:11px;opacity:0.6;">Waiting for first point...🧪</p>'; return; }
-            let rank=1;
-            for (let i=0;i<agentPointData.length;i++) { if(i>0&&agentPointData[i].total<agentPointData[i-1].total) rank++; agentPointData[i].rank=rank; }
-            pl.innerHTML = agentPointData.map(a=>`<div class="rank-item rank-${a.rank}"><div class="rank-num">${a.rank}</div><span>${a.name} <span class="point-total">${a.total} pts</span> ${a.rank===1&&a.total>0?"🥇":a.rank===2&&a.total>0?"🥈":a.rank===3&&a.total>0?"🥉":""}</span></div>`).join('');
-        }
-
-        function getAuditData() {
-            let email = auth.currentUser ? auth.currentUser.email : "unknown";
-            return { shortName: email.split('@')[0], timeString: new Date().toLocaleString('en-US') };
-        }
-
-        /* FIX 11: show saved checkmark */
-        function showSaveConfirm(cardIndex) {
-            let el = document.getElementById('saveConfirm'+cardIndex);
-            if (!el) return;
-            el.classList.add('show');
-            clearTimeout(el._timer);
-            el._timer = setTimeout(() => el.classList.remove('show'), 2000);
-        }
-
-        /* SLIDERS + WEEKLY HISTORY LOGGING */
-        for (let i=1; i<=teamData.length; i++) {
-            let mS  = document.getElementById('mainSlider'+i);
-            let bS  = document.getElementById('bonusSlider'+i);
-            let liq = document.getElementById('liquid'+i);
-            let sN  = document.getElementById('score-num'+i);
-            let prf = document.getElementById('profile'+i);
-            let crd = document.getElementById('card'+i);
-            let shakeTimer;
-            let memberName = teamData[i-1].name;
-            let liquidReady = false; // FIX 7: prevent snap on first load
-
-            function updateVisuals(isSync=false) {
-                let mV=parseInt(mS.value)||0, bV=parseInt(bS.value)||0;
-                /* FIX 7: only animate liquid after first sync */
-                if (liquidReady) liq.style.height = mV+'%';
-                sN.innerText = mV+bV;
-                mS.style.setProperty('--val',  mV+'%');
-                bS.style.setProperty('--b-val', bV+'%');
-                if (mV===100) {
-                    prf.className='profile-pic maxed-ring';
-                    crd.classList.add('maxed');
-                    /* FIX 8: gold flash on the maxed card itself */
-                    if (!finishedList.includes(memberName)) {
-                        db.child('winners').set([...finishedList,memberName]);
-                        if (!isSync) {
-                            crd.classList.add('maxed-flash');
-                            setTimeout(()=>crd.classList.remove('maxed-flash'),1000);
-                            triggerPillRain();
-                            for (let j=1;j<=teamData.length;j++) {
-                                if(i!==j) {
-                                    const cc=document.getElementById('card'+j);
-                                    cc.classList.add('trigger-congrats');
-                                    setTimeout(()=>cc.classList.remove('trigger-congrats'),2500);
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    prf.className = mV>0 ? 'profile-pic in-progress' : 'profile-pic';
-                    crd.classList.remove('maxed');
-                    if (finishedList.includes(memberName)) db.child('winners').set(finishedList.filter(n=>n!==memberName));
-                }
-                if (bV>0&&mV===100) { crd.classList.add('has-bonus'); crd.style.setProperty('--finish-p',bV+'%'); }
-                else                { crd.classList.remove('has-bonus'); crd.style.setProperty('--finish-p','0%'); }
-            }
-
-            function logWeeklyHistory(name, mVal, bVal) {
-                let a = getAuditData();
-                db.child('weeklyHistory/'+name).push({ total:parseInt(mVal)+parseInt(bVal), timestamp:new Date().toISOString(), editedBy:a.shortName });
-            }
-
-            mS.addEventListener('input', () => {
-                updateVisuals(false);
-                let a=getAuditData();
-                db.child('agents/'+memberName).update({ main:mS.value, lastEditedBy:a.shortName, lastEditedAt:a.timeString });
-                logWeeklyHistory(memberName, mS.value, bS.value);
-                showSaveConfirm(i);
-            });
-            bS.addEventListener('input', () => {
-                updateVisuals(false);
-                let a=getAuditData();
-                db.child('agents/'+memberName).update({ bonus:bS.value, lastEditedBy:a.shortName, lastEditedAt:a.timeString });
-                logWeeklyHistory(memberName, mS.value, bS.value);
-                crd.classList.add('bonus-shake'); clearTimeout(shakeTimer); shakeTimer=setTimeout(()=>crd.classList.remove('bonus-shake'),400);
-                showSaveConfirm(i);
-            });
-
-            db.child('agents/'+memberName).on('value', snap => {
-                const data=snap.val(); if(!data) return;
-                if(document.activeElement!==mS) mS.value=data.main||0;
-                if(document.activeElement!==bS) bS.value=data.bonus||0;
-                if(document.activeElement!==sN) {
-                    updateVisuals(true);
-                    /* FIX 7: after first sync, set liquid then enable transitions */
-                    if (!liquidReady) {
-                        liq.style.transition = 'none';
-                        liq.style.height = '0%';
-                        requestAnimationFrame(() => {
-                            requestAnimationFrame(() => {
-                                liq.style.transition = '';
-                                liq.style.height = (parseInt(mS.value)||0)+'%';
-                                liquidReady = true;
-                            });
-                        });
-                    }
-                }
-                const el=document.getElementById('lastEdited'+i);
-                if(data.lastEditedBy) { el.innerText=`Updated by ${data.lastEditedBy}`; el.title=data.lastEditedAt; }
-            });
-
-            function updateManualPoints(e) {
-                if(e.type==='keypress'&&e.key!=='Enter') return;
-                e.preventDefault(); sN.blur();
-                let nP=parseInt(sN.innerText)||0;
-                if(isNaN(nP)) { alert("Only whole numbers! 🧪"); return; }
-                nP=Math.max(0,Math.min(200,nP));
-                mS.value=Math.min(100,nP); bS.value=Math.max(0,nP-100);
-                updateVisuals(false);
-                if(bS.value>0){crd.classList.add('bonus-shake');clearTimeout(shakeTimer);shakeTimer=setTimeout(()=>crd.classList.remove('bonus-shake'),400);}
-                let a=getAuditData();
-                db.child('agents/'+memberName).update({main:mS.value,bonus:bS.value,lastEditedBy:a.shortName,lastEditedAt:a.timeString});
-                logWeeklyHistory(memberName,mS.value,bS.value);
-                showSaveConfirm(i);
-            }
-            sN.addEventListener('blur',     updateManualPoints);
-            sN.addEventListener('keypress', updateManualPoints);
-        }
-
-        /* RECOGNITION SYNC */
-        function syncRecognition(inputId, picId, dbKey, bgId) {
-            const inp=document.getElementById(inputId), pic=picId?document.getElementById(picId):null, bg=bgId?document.getElementById(bgId):null;
-            function updBg(n) { if(bg){if(n&&n.trim()!==''){bg.src=`${encodeURIComponent(n.trim())}%20highlight%20background.jpg`;}else{bg.style.display='none';bg.src='';}} }
-            inp.addEventListener('input', e => { let v=e.target.value; if(pic) pic.src=getAvatarUrl(v); db.child('recognition/'+dbKey).set(v); updBg(v); });
-            db.child('recognition/'+dbKey).on('value', snap => { const v=snap.val()||''; if(document.activeElement!==inp){inp.value=v;if(pic)pic.src=getAvatarUrl(v);} updBg(v); });
-        }
-        syncRecognition('perf-name','perf-pic','perfName','perf-bg');
-        syncRecognition('perf-stats',null,'perfStats',null);
-        syncRecognition('behav-name','behav-pic','behavName','behav-bg');
-        syncRecognition('behav-stats',null,'behavStats',null);
-        syncRecognition('hm-name','hm-pic','hmName','hm-bg');
-        syncRecognition('hm-stats',null,'hmStats',null);
-
-        const hmToggle=document.getElementById('hm-toggle'), hmCard=document.getElementById('hm-card');
-        hmToggle.addEventListener('change', e=>{ hmCard.style.display=e.target.checked?'block':'none'; db.child('recognition/hmToggleState').set(e.target.checked); });
-        db.child('recognition/hmToggleState').on('value', snap=>{ let c=snap.val()||false; hmToggle.checked=c; hmCard.style.display=c?'block':'none'; });
-
-        /* RESET BOARD */
-        document.getElementById('resetBtn').addEventListener('click', () => {
-            if(confirm('Are you sure you want to reset ALL progress? This cannot be undone! 🧪'))
-                if(confirm('Wait, are you REALLY sure? The Fun Police (Jordan) is watching! 🚨👮‍♂️'))
-                    if(confirm('Final warning! Really, really, REALLY sure? 💥🗑️'))
-                        db.remove().then(()=>location.reload());
-        });
-
-        /* TUTORIAL MODAL CONTROLS */
-        document.getElementById('closeTutorialBtn').addEventListener('click', () => {
-            document.getElementById('tutorial-modal').classList.remove('show');
-            // Save to Firebase so they never see it again
-            db.child('agents/' + loggedInAgentName).update({ hasSeenTutorial: true });
-        });
-
-        document.getElementById('testTutorialBtn').addEventListener('click', () => {
-            // Let Ken Ji replay it instantly on demand
-            document.getElementById('tutorial-modal').classList.add('show');
-        });
-    </script>
-</body>
-</html>
+            document.querySelectorAll('.crown
