@@ -606,7 +606,7 @@
             "glyza@happyhead.com": "Glyza", "ronellyn@happyhead.com": "Rhem", "angelica@happyhead.com": "Angel",
             "shinneth@happyhead.com": "Shine", "lance@happyhead.com": "Lance", "lflores@happyhead.com": "Lord Jet",
             "molalo@happyhead.com": "Maria", "jovie@happyhead.com": "Jovie", "harrish@happyhead.com": "Vill",
-            "marjun@happyhead.com": "Mushi", "margarrett@happyhead.com": "Margarett", "luigie@happyhead.com": "Luigi",
+            "marjun@happyhead.com": "MUSHII", "margarrett@happyhead.com": "Margarett", "luigie@happyhead.com": "Luigi",
             "argel@happyhead.com": "Argel", "adelene@happyhead.com": "Adelene",
             "layla@happyhead.com": "Layla", "harvey.telen@happyhead.com": "Harvey T", "janica@happyhead.com": "Janica",
             "reynier@happyhead.com": "Rynier", "mark.burdeos@happyhead.com": "Mark", "brandon@happyhead.com": "Brandon"
@@ -769,6 +769,7 @@
             if (['Maria','Rhem','Shine','Angel','Adelene'].includes(name)) p.push('Ladies popup.jpg');
             if (['Glyza','Jouls','Harvey'].includes(name))              p.push('Leads popup.jpg');
             if (['Glyza','Rhem','Harvey'].includes(name))               p.push('Batch1 popup.jpg');
+            if (['Rhem','Harvey','Jouls','Jovie'].includes(name))       p.push('Bayot popup.jpg');
             return p.map(x => `<img src="${x}" class="popup-bubble" onerror="this.remove()">`).join('');
         }
 
@@ -803,7 +804,7 @@
             { name:"Raian",    position:"Hair Specialist",         gender:"male"   },
             { name:"Jovie",    position:"Concierge/Social Media",  gender:"female" },
             { name:"Vill",     position:"Social Media",            gender:"male"   },
-            { name:"Mushi",   position:"Hair Specialist",         gender:"male"   },
+            { name:"MUSHII",   position:"Hair Specialist",         gender:"male"   },
             { name:"Margarett",position:"Concierge",               gender:"female" },
             { name:"Luigi",    position:"Hair Specialist",         gender:"male"   },
             { name:"Argel",    position:"Hair Specialist",         gender:"male"   },
