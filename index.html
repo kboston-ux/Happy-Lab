@@ -769,7 +769,6 @@
             if (['Maria','Rhem','Shine','Angel','Adelene'].includes(name)) p.push('Ladies popup.jpg');
             if (['Glyza','Jouls','Harvey'].includes(name))              p.push('Leads popup.jpg');
             if (['Glyza','Rhem','Harvey'].includes(name))               p.push('Batch1 popup.jpg');
-            if (['Rhem','Harvey','Jouls','Jovie'].includes(name))       p.push('Bayot popup.jpg');
             return p.map(x => `<img src="${x}" class="popup-bubble" onerror="this.remove()">`).join('');
         }
 
@@ -796,12 +795,10 @@
             { name:"Harvey",   position:"Lead/Daddy QA",          gender:"male"   },
             { name:"Jouls",    position:"MDI/Weekend Lead",        gender:"male"   },
             { name:"Angel",    position:"Concierge",               gender:"female" },
-            { name:"Ken Ji",   position:"Sales",                   gender:"male"   },
             { name:"Shine",    position:"Concierge",               gender:"female" },
             { name:"Lance",    position:"MDI/Social Media",        gender:"male"   },
             { name:"Lord Jet", position:"Social Media",            gender:"male"   },
             { name:"Maria",    position:"Hair Specialist",         gender:"female" },
-            { name:"Raian",    position:"Hair Specialist",         gender:"male"   },
             { name:"Jovie",    position:"Concierge/Social Media",  gender:"female" },
             { name:"Vill",     position:"Social Media",            gender:"male"   },
             { name:"MUSHII",   position:"Hair Specialist",         gender:"male"   },
@@ -904,7 +901,7 @@
                     localActiveAgents.push(safeName);
                     element.classList.add('active');
                     let g = document.getElementById('bubble-group-'+safeName);
-                    if (g) g.classList.add('show-bubbles');
+                    if (g) g.classList.remove('show-bubbles');
                     if (localActiveAgents.length > 2) {
                         let old = localActiveAgents.shift();
                         let w   = document.querySelector(`[data-agent="${old}"]`);
