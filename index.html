@@ -601,13 +601,20 @@
         const presenceRef = firebase.database().ref('presence');
         const auth        = firebase.auth();
 
+        // --- ONE-TIME PURGE SNIPPET (Argel & Seph Database Cleanup) ---
+        db.child('agents/Argel').remove();
+        db.child('agents/Seph').remove();
+        db.child('weeklyHistory/Argel').remove();
+        db.child('weeklyHistory/Seph').remove();
+        // --------------------------------------------------------------
+
         const emailToNameMap = {
             "harvey@happyhead.com": "Harvey", "yrrone@happyhead.com": "Jouls", "kboston@happyhead.com": "Ken Ji",
             "glyza@happyhead.com": "Glyza", "ronellyn@happyhead.com": "Rhem", "angelica@happyhead.com": "Angel",
             "shinneth@happyhead.com": "Shine", "lance@happyhead.com": "Lance", "lflores@happyhead.com": "Lord Jet",
             "molalo@happyhead.com": "Maria", "jovie@happyhead.com": "Jovie", "harrish@happyhead.com": "Vill",
             "marjun@happyhead.com": "MUSHII", "margarrett@happyhead.com": "Margarett", "luigie@happyhead.com": "Luigi",
-            "argel@happyhead.com": "Argel", "adelene@happyhead.com": "Adelene",
+            "adelene@happyhead.com": "Adelene",
             "layla@happyhead.com": "Layla", "harvey.telen@happyhead.com": "Harvey T", "janica@happyhead.com": "Janica",
             "reynier@happyhead.com": "Rynier", "mark.burdeos@happyhead.com": "Mark", "brandon@happyhead.com": "Brandon"
         };
@@ -804,8 +811,6 @@
             { name:"MUSHII",   position:"Hair Specialist",         gender:"male"   },
             { name:"Margarett",position:"Concierge",               gender:"female" },
             { name:"Luigi",    position:"Hair Specialist",         gender:"male"   },
-            { name:"Argel",    position:"Hair Specialist",         gender:"male"   },
-            { name:"Seph",     position:"Hair Specialist",         gender:"male"   },
             { name:"Adelene",  position:"Hair Specialist",         gender:"female" },
             { name:"Layla",    position:"Hair Specialist",         gender:"female" },
             { name:"Harvey T", position:"Hair Specialist",         gender:"male"   },
