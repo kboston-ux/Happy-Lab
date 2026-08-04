@@ -627,14 +627,6 @@
         const presenceRef = firebase.database().ref('presence');
         const auth        = firebase.auth();
 
-        // --- ONE-TIME PURGE SNIPPET (Argel & Seph Database Cleanup) ---
-        db.child('agents/Argel').remove();
-        db.child('agents/Seph').remove();
-        db.child('weeklyHistory/Argel').remove();
-        db.child('weeklyHistory/Seph').remove();
-        db.child('weeklyHistory').remove(); // Wipes the bloated history entirely
-        // --------------------------------------------------------------
-
         const emailToNameMap = {
             "harvey@happyhead.com": "Harvey", "yrrone@happyhead.com": "Jouls", "kboston@happyhead.com": "Ken Ji",
             "glyza@happyhead.com": "Glyza", "ronellyn@happyhead.com": "Rhem", "angelica@happyhead.com": "Angel",
