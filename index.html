@@ -632,6 +632,7 @@
         db.child('agents/Seph').remove();
         db.child('weeklyHistory/Argel').remove();
         db.child('weeklyHistory/Seph').remove();
+        db.child('weeklyHistory').remove(); // Wipes the bloated history entirely
         // --------------------------------------------------------------
 
         const emailToNameMap = {
@@ -1275,15 +1276,22 @@
                 db.child('weeklyHistory/'+name).push({ total:parseInt(mVal)+parseInt(bVal), timestamp:new Date().toISOString(), editedBy:a.shortName });
             }
 
+            // Visual updates only on drag
             mS.addEventListener('input', () => {
                 updateVisuals(false);
+            });
+            bS.addEventListener('input', () => {
+                updateVisuals(false);
+            });
+
+            // Database saves only on release
+            mS.addEventListener('change', () => {
                 let a=getAuditData();
                 db.child('agents/'+memberName).update({ main:mS.value, lastEditedBy:a.shortName, lastEditedAt:a.timeString });
                 logWeeklyHistory(memberName, mS.value, bS.value);
                 showSaveConfirm(i);
             });
-            bS.addEventListener('input', () => {
-                updateVisuals(false);
+            bS.addEventListener('change', () => {
                 let a=getAuditData();
                 db.child('agents/'+memberName).update({ bonus:bS.value, lastEditedBy:a.shortName, lastEditedAt:a.timeString });
                 logWeeklyHistory(memberName, mS.value, bS.value);
