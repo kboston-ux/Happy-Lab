@@ -180,9 +180,11 @@
         #decor-dandruff { width: 220px; } #decor-dna { width: 180px; } #decor-llllt { width: 200px; } #decor-multiple { width: 300px; opacity: 0.2; } #decor-more-pills { width: 220px; opacity: 0.2; } #decor-grey { width: 180px; opacity: 0.2; } #decor-background-img { width: 250px; opacity: 0.15; }
 
         /* =============================================
-           FIX 4: LEADERBOARD SECTION DIVIDER
+           LEFT PANEL & LEADERBOARD
            ============================================= */
-        #leaderboard { position: fixed; left: 20px; top: 100px; width: 220px; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); border-radius: 20px; padding: 20px; border: 1px solid rgba(255,255,255,0.9); box-shadow: 0 15px 35px rgba(0,0,0,0.1), inset 0 0 0 1px rgba(255,255,255,0.5); z-index: 100; text-align: left; }
+        #left-panel { position: fixed; left: 20px; top: 100px; width: 220px; z-index: 100; max-height: 90vh; overflow-y: auto; overflow-x: hidden; }
+        #left-panel::-webkit-scrollbar { display: none; }
+        #leaderboard { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); border-radius: 20px; padding: 20px; border: 1px solid rgba(255,255,255,0.9); box-shadow: 0 15px 35px rgba(0,0,0,0.1), inset 0 0 0 1px rgba(255,255,255,0.5); text-align: left; }
         #leaderboard h3 { font-family: 'Playfair Display', serif; margin: 0 0 10px 0; color: #1a2a3a; border-bottom: 2px solid #5499c7; padding-bottom: 5px; font-size: 16px; }
         #leaderboard h4 { font-family: 'Playfair Display', serif; font-size: 13px; color: #1a2a3a; margin-top: 0; margin-bottom: 8px; }
         /* The divider card between Finishers and Total Points */
@@ -200,7 +202,7 @@
         .point-total { color: #1a2a3a; font-weight: 700; opacity: 0.8; }
         .rank-item img.rank-crown { width: 25px; margin-left: auto; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1)); }
 
-        /* RECOGNITION PANEL */
+        /* RECOGNITION PANELS & CARDS */
         #recognition-panel { position: fixed; right: 20px; top: 100px; width: 300px; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); border-radius: 20px; padding: 20px; border: 1px solid rgba(255,255,255,0.9); box-shadow: 0 15px 35px rgba(0,0,0,0.1), inset 0 0 0 1px rgba(255,255,255,0.5); z-index: 100; text-align: center; max-height: 90vh; overflow-y: auto; overflow-x: hidden; }
         .rec-card { background: rgba(255, 255, 255, 0.9); border-radius: 15px; margin-bottom: 15px; box-shadow: 0 8px 20px rgba(0,0,0,0.04); border: 1px solid rgba(255,255,255,1); transition: transform 0.3s var(--premium-ease); position: relative; overflow: hidden; }
         .rec-card:hover { transform: translateY(-2px); }
@@ -470,16 +472,40 @@
         <img src="grey.png"                class="bouncing-product" id="decor-grey">
         <img src="Background.png"          class="bouncing-product" id="decor-background-img">
 
-        <!-- FIX 4: leaderboard sections wrapped in divider cards -->
-        <div id="leaderboard">
-            <h3>🧪 Lab Leaderboard</h3>
-            <div class="leaderboard-section">
-                <h4>🥇 Finishers</h4>
-                <div id="rankList"><p style="font-size:11px;opacity:0.6;">Waiting for first finisher...🧪</p></div>
+        <!-- =============================================
+             LEFT PANEL (Specialist of the Month & Leaderboard)
+             ============================================= -->
+        <div id="left-panel">
+            <!-- New Specialist of the Month Toggle -->
+            <label class="hm-toggle-container" style="display:block; margin-bottom:10px; font-size:11px; padding: 6px 10px; width:100%; box-sizing:border-box;">
+                <input type="checkbox" id="hsom-toggle">👑 Specialist of the Month
+            </label>
+            
+            <!-- New Specialist of the Month Card -->
+            <div class="rec-card" id="hsom-card" style="display:none; margin-bottom:15px; width: 100%; box-sizing: border-box;">
+                <div class="rec-bg-container">
+                    <img src="" class="rec-bg-img" id="hsom-bg" onerror="this.style.display='none'" onload="this.style.display='block'">
+                    <div class="rec-bg-gradient"></div>
+                </div>
+                <div class="rec-content" style="padding: 12px;">
+                    <h4 class="rec-title" style="font-size: 14px;">👑 Specialist of the Month</h4>
+                    <img src="https://ui-avatars.com/api/?name=%3F&background=eee&color=999" class="rec-pic" id="hsom-pic" style="width:90px;height:90px;">
+                    <input type="text" class="rec-name-input" id="hsom-name" placeholder="Agent Name" style="font-size:15px;">
+                    <textarea class="rec-stats-input" id="hsom-stats" placeholder="Type stats here..." style="min-height:50px;"></textarea>
+                </div>
             </div>
-            <div class="leaderboard-section">
-                <h4>🏆 Total Points</h4>
-                <div id="pointList"><p style="font-size:11px;opacity:0.6;">Waiting for first point...🧪</p></div>
+
+            <!-- Existing Leaderboard -->
+            <div id="leaderboard">
+                <h3>🧪 Lab Leaderboard</h3>
+                <div class="leaderboard-section">
+                    <h4>🥇 Finishers</h4>
+                    <div id="rankList"><p style="font-size:11px;opacity:0.6;">Waiting for first finisher...🧪</p></div>
+                </div>
+                <div class="leaderboard-section">
+                    <h4>🏆 Total Points</h4>
+                    <div id="pointList"><p style="font-size:11px;opacity:0.6;">Waiting for first point...🧪</p></div>
+                </div>
             </div>
         </div>
 
@@ -1313,16 +1339,28 @@
             inp.addEventListener('input', e => { let v=e.target.value; if(pic) pic.src=getAvatarUrl(v); db.child('recognition/'+dbKey).set(v); updBg(v); });
             db.child('recognition/'+dbKey).on('value', snap => { const v=snap.val()||''; if(document.activeElement!==inp){inp.value=v;if(pic)pic.src=getAvatarUrl(v);} updBg(v); });
         }
+        
+        // Sync original recognition cards
         syncRecognition('perf-name','perf-pic','perfName','perf-bg');
         syncRecognition('perf-stats',null,'perfStats',null);
         syncRecognition('behav-name','behav-pic','behavName','behav-bg');
         syncRecognition('behav-stats',null,'behavStats',null);
         syncRecognition('hm-name','hm-pic','hmName','hm-bg');
         syncRecognition('hm-stats',null,'hmStats',null);
+        
+        // Sync new Specialist of the Month card
+        syncRecognition('hsom-name','hsom-pic','hsomName','hsom-bg');
+        syncRecognition('hsom-stats',null,'hsomStats',null);
 
+        // Honorable Mention Toggle
         const hmToggle=document.getElementById('hm-toggle'), hmCard=document.getElementById('hm-card');
         hmToggle.addEventListener('change', e=>{ hmCard.style.display=e.target.checked?'block':'none'; db.child('recognition/hmToggleState').set(e.target.checked); });
         db.child('recognition/hmToggleState').on('value', snap=>{ let c=snap.val()||false; hmToggle.checked=c; hmCard.style.display=c?'block':'none'; });
+
+        // Specialist of the Month Toggle
+        const hsomToggle=document.getElementById('hsom-toggle'), hsomCard=document.getElementById('hsom-card');
+        hsomToggle.addEventListener('change', e=>{ hsomCard.style.display=e.target.checked?'block':'none'; db.child('recognition/hsomToggleState').set(e.target.checked); });
+        db.child('recognition/hsomToggleState').on('value', snap=>{ let c=snap.val()||false; hsomToggle.checked=c; hsomCard.style.display=c?'block':'none'; });
 
         /* RESET BOARD */
         document.getElementById('resetBtn').addEventListener('click', () => {
