@@ -305,18 +305,20 @@
         .popup-bubble:hover { box-shadow: 0 15px 30px rgba(0,0,0,0.35); filter: brightness(1.05); z-index: 9005; }
         .popup-bubble.focused { width: auto !important; height: 75vh !important; max-width: 90vw !important; border-radius: 20px; top: 50% !important; left: 50% !important; transform: translate(-50%, -50%) !important; z-index: 99999 !important; box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 0 100vw rgba(26, 42, 58, 0.75); cursor: zoom-out; }
 
-        /* CARD BACKGROUND REVEAL (MODIFIED FOR HOVER SILHOUETTE) */
+        /* CARD BACKGROUND REVEAL (GHOST PROFILE HOVER) */
         .card-bg-reveal { position: absolute; inset: 0; opacity: 0; z-index: 1; transition: opacity 0.4s var(--premium-ease); pointer-events: none; border-radius: 30px; overflow: hidden; backface-visibility: hidden; }
-        /* Reveal img defaults to the heavily frosted/blurred state */
-        .reveal-img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; filter: blur(12px) brightness(0.6); transition: filter 0.4s var(--premium-ease); }
+        .reveal-img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; opacity: 0; transition: opacity 0.4s var(--premium-ease); }
+        .ghost-profile-img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; opacity: 0; filter: blur(8px); transform: scale(1.1); transition: opacity 0.4s var(--premium-ease); }
         .reveal-gradient { position: absolute; inset: 0; background: linear-gradient(to bottom, transparent 40%, rgba(255,255,255,0.95) 85%); z-index: 2; }
         
-        /* Show the frosted background on hover */
+        /* Show the ghost profile picture on hover */
         .profile-wrapper:hover ~ .card-bg-reveal { opacity: 1; }
+        .profile-wrapper:hover ~ .card-bg-reveal .ghost-profile-img { opacity: 0.18; }
         
-        /* Show the background and remove the blur/darkness on active (click) */
+        /* Show the real background and hide the ghost on active (click) */
         .profile-wrapper.active ~ .card-bg-reveal { opacity: 1; }
-        .profile-wrapper.active ~ .card-bg-reveal .reveal-img { filter: blur(0px) brightness(1); }
+        .profile-wrapper.active ~ .card-bg-reveal .reveal-img { opacity: 1; }
+        .profile-wrapper.active ~ .card-bg-reveal .ghost-profile-img { opacity: 0 !important; }
 
         /* BOTTLE VISUAL */
         .bottle-visual { width: 160px; position: relative; z-index: 10; pointer-events: none; transition: opacity 0.5s ease; }
@@ -634,6 +636,13 @@
         const presenceRef = firebase.database().ref('presence');
         const auth        = firebase.auth();
 
+        // --- ONE-TIME PURGE SNIPPET (Argel & Seph Database Cleanup) ---
+        db.child('agents/Argel').remove();
+        db.child('agents/Seph').remove();
+        db.child('weeklyHistory/Argel').remove();
+        db.child('weeklyHistory/Seph').remove();
+        // --------------------------------------------------------------
+
         const emailToNameMap = {
             "harvey@happyhead.com": "Harvey", "yrrone@happyhead.com": "Jouls", "kboston@happyhead.com": "Ken Ji",
             "glyza@happyhead.com": "Glyza", "ronellyn@happyhead.com": "Rhem", "angelica@happyhead.com": "Angel",
@@ -873,7 +882,11 @@
                     <div class="profile-pic" id="profile${i}"><img src="${avatarUrl}" onerror="this.onerror=null; this.src='${fallbackSvg}';">${dotHTML}</div>
                     <div class="profile-tooltip"><span class="tooltip-name">${member.name}</span><span class="tooltip-role">${member.position}</span></div>
                 </div>
-                <div class="card-bg-reveal"><img src="${bgImgUrl}" class="reveal-img" alt="" onerror="this.style.display='none'"><div class="reveal-gradient"></div></div>
+                <div class="card-bg-reveal">
+                    <img src="${bgImgUrl}" class="reveal-img" alt="" onerror="this.style.display='none'">
+                    <img src="${avatarUrl}" class="ghost-profile-img" alt="" onerror="this.style.display='none'">
+                    <div class="reveal-gradient"></div>
+                </div>
                 <img src="frog-wow-scroll.gif" class="wow-scroll-gif" id="wowScroll${i}">
                 <div class="bottle-visual" id="bottle${i}">
                     <div class="liquid-wrapper"><div class="liquid-fill" id="liquid${i}"></div></div>
