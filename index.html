@@ -305,20 +305,11 @@
         .popup-bubble:hover { box-shadow: 0 15px 30px rgba(0,0,0,0.35); filter: brightness(1.05); z-index: 9005; }
         .popup-bubble.focused { width: auto !important; height: 75vh !important; max-width: 90vw !important; border-radius: 20px; top: 50% !important; left: 50% !important; transform: translate(-50%, -50%) !important; z-index: 99999 !important; box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 0 100vw rgba(26, 42, 58, 0.75); cursor: zoom-out; }
 
-        /* CARD BACKGROUND REVEAL (GHOST PROFILE HOVER) */
+        /* CARD BACKGROUND REVEAL */
         .card-bg-reveal { position: absolute; inset: 0; opacity: 0; z-index: 1; transition: opacity 0.4s var(--premium-ease); pointer-events: none; border-radius: 30px; overflow: hidden; backface-visibility: hidden; }
-        .reveal-img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; opacity: 0; transition: opacity 0.4s var(--premium-ease); }
-        .ghost-profile-img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; opacity: 0; filter: blur(8px); transform: scale(1.1); transition: opacity 0.4s var(--premium-ease); }
+        .reveal-img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; }
         .reveal-gradient { position: absolute; inset: 0; background: linear-gradient(to bottom, transparent 40%, rgba(255,255,255,0.95) 85%); z-index: 2; }
-        
-        /* Show the ghost profile picture on hover */
-        .profile-wrapper:hover ~ .card-bg-reveal { opacity: 1; }
-        .profile-wrapper:hover ~ .card-bg-reveal .ghost-profile-img { opacity: 0.18; }
-        
-        /* Show the real background and hide the ghost on active (click) */
         .profile-wrapper.active ~ .card-bg-reveal { opacity: 1; }
-        .profile-wrapper.active ~ .card-bg-reveal .reveal-img { opacity: 1; }
-        .profile-wrapper.active ~ .card-bg-reveal .ghost-profile-img { opacity: 0 !important; }
 
         /* BOTTLE VISUAL */
         .bottle-visual { width: 160px; position: relative; z-index: 10; pointer-events: none; transition: opacity 0.5s ease; }
@@ -641,13 +632,16 @@
         db.child('agents/Seph').remove();
         db.child('weeklyHistory/Argel').remove();
         db.child('weeklyHistory/Seph').remove();
+        // Added Vill purge snippet:
+        db.child('agents/Vill').remove();
+        db.child('weeklyHistory/Vill').remove();
         // --------------------------------------------------------------
 
         const emailToNameMap = {
             "harvey@happyhead.com": "Harvey", "yrrone@happyhead.com": "Jouls", "kboston@happyhead.com": "Ken Ji",
             "glyza@happyhead.com": "Glyza", "ronellyn@happyhead.com": "Rhem", "angelica@happyhead.com": "Angel",
             "shinneth@happyhead.com": "Shine", "lance@happyhead.com": "Lance", "lflores@happyhead.com": "Lord Jet",
-            "molalo@happyhead.com": "Maria", "jovie@happyhead.com": "Jovie", "harrish@happyhead.com": "Vill",
+            "molalo@happyhead.com": "Maria", "jovie@happyhead.com": "Jovie", 
             "marjun@happyhead.com": "MUSHII", "margarrett@happyhead.com": "Margarett", "luigie@happyhead.com": "Luigi",
             "adelene@happyhead.com": "Adelene",
             "layla@happyhead.com": "Layla", "harvey.telen@happyhead.com": "Harvey T", "janica@happyhead.com": "Janica",
@@ -842,7 +836,6 @@
             { name:"Lord Jet", position:"Social Media",            gender:"male"   },
             { name:"Maria",    position:"Hair Specialist",         gender:"female" },
             { name:"Jovie",    position:"Concierge/Social Media",  gender:"female" },
-            { name:"Vill",     position:"Social Media",            gender:"male"   },
             { name:"MUSHII",   position:"Hair Specialist",         gender:"male"   },
             { name:"Margarett",position:"Concierge",               gender:"female" },
             { name:"Luigi",    position:"Hair Specialist",         gender:"male"   },
@@ -854,16 +847,6 @@
             { name:"Mark",     position:"Hair Specialist",         gender:"male"   },
             { name:"Brandon",  position:"Hair Specialist",         gender:"male"   }
         ];
-
-        /* --- FIX 3A: INSTANT PRELOAD BACKGROUND IMAGES --- */
-        function preloadBackgroundImages() {
-            const bgUrls = teamData.map(m => getBackgroundFor(m.name));
-            bgUrls.forEach(url => {
-                const img = new Image();
-                img.src = url;
-            });
-        }
-        preloadBackgroundImages();
 
         const simpleDotMembers = ["Harvey","Jouls","Ken Ji"];
         const grid = document.getElementById('bottleGrid');
@@ -882,11 +865,7 @@
                     <div class="profile-pic" id="profile${i}"><img src="${avatarUrl}" onerror="this.onerror=null; this.src='${fallbackSvg}';">${dotHTML}</div>
                     <div class="profile-tooltip"><span class="tooltip-name">${member.name}</span><span class="tooltip-role">${member.position}</span></div>
                 </div>
-                <div class="card-bg-reveal">
-                    <img src="${bgImgUrl}" class="reveal-img" alt="" onerror="this.style.display='none'">
-                    <img src="${avatarUrl}" class="ghost-profile-img" alt="" onerror="this.style.display='none'">
-                    <div class="reveal-gradient"></div>
-                </div>
+                <div class="card-bg-reveal"><img src="${bgImgUrl}" class="reveal-img" alt="" onerror="this.style.display='none'"><div class="reveal-gradient"></div></div>
                 <img src="frog-wow-scroll.gif" class="wow-scroll-gif" id="wowScroll${i}">
                 <div class="bottle-visual" id="bottle${i}">
                     <div class="liquid-wrapper"><div class="liquid-fill" id="liquid${i}"></div></div>
@@ -1298,22 +1277,15 @@
                 db.child('weeklyHistory/'+name).push({ total:parseInt(mVal)+parseInt(bVal), timestamp:new Date().toISOString(), editedBy:a.shortName });
             }
 
-            // Visual updates only on drag
             mS.addEventListener('input', () => {
                 updateVisuals(false);
-            });
-            bS.addEventListener('input', () => {
-                updateVisuals(false);
-            });
-
-            // Database saves only on release
-            mS.addEventListener('change', () => {
                 let a=getAuditData();
                 db.child('agents/'+memberName).update({ main:mS.value, lastEditedBy:a.shortName, lastEditedAt:a.timeString });
                 logWeeklyHistory(memberName, mS.value, bS.value);
                 showSaveConfirm(i);
             });
-            bS.addEventListener('change', () => {
+            bS.addEventListener('input', () => {
+                updateVisuals(false);
                 let a=getAuditData();
                 db.child('agents/'+memberName).update({ bonus:bS.value, lastEditedBy:a.shortName, lastEditedAt:a.timeString });
                 logWeeklyHistory(memberName, mS.value, bS.value);
